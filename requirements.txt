@@ -8,5 +8,7 @@ meshio
 h5py
 tensortrax
 matplotlib
+pyvista
+trame
 felupe
 feplot
