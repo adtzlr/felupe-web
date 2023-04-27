@@ -4,11 +4,8 @@ jupyterlab
 jupyterlite
 numpy
 scipy
-meshio
 h5py
+meshio
 tensortrax
 matplotlib
-pyvista
-trame
 felupe
-feplot
