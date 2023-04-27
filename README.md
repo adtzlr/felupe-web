@@ -1,5 +1,7 @@
-# FElupe Web
-This Repository provides notebooks for running **FElupe** - *Finite Element Analysis* in the Browser. 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/adtzlr/felupe/main/docs/_static/logo_light.svg" height="120px"/>
+  <p align="center">Notebooks for running **FElupe** in the Browser. </p>
+</p>
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/adtzlr/felupe/main?labpath=notebooks%2Fmybinder%2F01_Getting%20Started.ipynb) [![lite-badge](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://adtzlr.github.io/felupe-web/lab?path=01_Getting+Started.ipynb) <a target="_blank" href="https://colab.research.google.com/github/adtzlr/felupe-web/blob/main/notebooks/colab/01_Getting%20Started.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
