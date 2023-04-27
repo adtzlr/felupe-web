@@ -6,6 +6,7 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
+  - pypardiso
   - pip
   - pip:
     - einsumt
