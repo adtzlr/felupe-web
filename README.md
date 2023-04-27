@@ -8,7 +8,7 @@
 ## JupyterLite
 Due to limitations using JupyterLite / Pyodide, the `parallel`-execution mode is not available. The computation is performed on the client side. Hence, the computation performance depends on the client. Python is running in 32bit mode. Visualizations of the simulation model are not possible (`felupe.Result` is not available).
 
-> **Note** <br>
+> **Note**  
 > Select and delete all files in JupyterLite to delete all local files and to restore the files provided by the repository.
 
 ## MyBinder and Google Colab
