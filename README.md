@@ -12,6 +12,6 @@ Due to limitations using JupyterLite / Pyodide, the `parallel`-execution mode is
 > Select and delete all files in JupyterLite to delete all local files and to restore the files provided by the repository.
 
 ## MyBinder and Google Colab
-The computations are performed in virtual machines with limited memory. Google Colab offers Pro plans providing more memory and computation power. However, visualizations of the simulation model are not possible. The most complete package is available via MyBinder.
+The most complete package is available via MyBinder. The computations are performed in virtual machines with limited memory. Google Colab offers Pro plans providing more memory and computation power. Visualizations of the simulation model are not possible in Colab.
 
 https://adtzlr.github.io/felupe-web/lab?path=01_Getting+Started.ipynb
