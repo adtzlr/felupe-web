@@ -9,6 +9,7 @@ dependencies:
   - pypardiso
   - pip
   - pip:
+    - nbgitpuller
     - einsumt
     - tensortrax
     - matadi
