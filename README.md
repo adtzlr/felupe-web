@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/adtzlr/felupe/main/docs/_static/logo_light.svg" height="120px"/>
-  <p align="center">Notebooks for running FElupe in the Browser. </p>
+  <p align="center">Notebooks for running <a href="https://github.com/adtzlr/felupe">FElupe</a> in the Browser. </p>
 </p>
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/adtzlr/felupe-web/main?labpath=notebooks/binder/01_Getting-Started.ipynb) [![lite-badge](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://adtzlr.github.io/felupe-web/lab?path=01_Getting-Started.ipynb) <a target="_blank" href="https://colab.research.google.com/github/adtzlr/felupe-web/blob/main/notebooks/colab/01_Getting-Started.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
@@ -18,6 +18,6 @@ The most complete package is available via MyBinder. The computations are perfor
 > Never run `!pip install felupe[all]` in a MyBinder environment because this downloads `vtk` via pip and breaks the interactive outputs.
 
 ## Google Colab
-Computations are performed in virtual machines with limited memory. Colab offers Pro plans providing more memory and computation power. Visualizations of the simulation model are not possible in Colab.
+Computations are performed in virtual machines with limited memory. Colab offers Pro plans providing more memory and computation power. Visualizations of the simulation model are not possible in Colab, i.e. `felupe.Result` is not available in Colab.
 
 
