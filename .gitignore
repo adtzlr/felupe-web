@@ -114,6 +114,3 @@ dmypy.json
 # jupyterlite
 *.doit.db
 _output
-
-# Jupyter notebooks
-.virtual_documents/
