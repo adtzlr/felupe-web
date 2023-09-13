@@ -1,7 +1,9 @@
-ipympl
-ipywidgets
 jupyterlab
-jupyterlite
+jupyterlite-core
+jupyterlite-pyodide-kernel
+ipywidgets
+ipyevents
+ipympl
 numpy
 scipy
 h5py
