@@ -30,6 +30,7 @@ scipy
 h5py
 meshio
 tensortrax
+tqdm
 matplotlib
 trame
 pyvista
