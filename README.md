@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/adtzlr/felupe/main/docs/_static/logo_light.svg" height="120px"/>
+  <img src="https://raw.githubusercontent.com/adtzlr/felupe/main/docs/_static/logo.png" height="120px"/>
   <p align="center">Notebooks for running <a href="https://github.com/adtzlr/felupe">FElupe</a> in the Browser. </p>
 </p>
 
