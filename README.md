@@ -12,10 +12,7 @@ Due to limitations using JupyterLite / Pyodide, the `parallel`-evaluation mode o
 > Select and delete all files in JupyterLite to delete all local files and to restore the files provided by the repository.
 
 ## MyBinder and Google Colab
-The most complete package is available via MyBinder. The computations are performed in virtual machines with limited memory. 
-
-> **Warning**  
-> Never run `!pip install felupe[all]` in a MyBinder environment because this downloads `vtk` via pip and breaks the interactive outputs.
+The most complete package is available via MyBinder. The computations are performed in virtual machines with limited memory.  Unfortunately, the environment fails to build quite often.
 
 ## Google Colab
 Computations are performed in virtual machines with limited memory. Colab offers Pro plans providing more memory and computation power. Visualizations of the simulation model are limited in Colab, i.e. `felupe.View` is only available with a static backend in Colab.
