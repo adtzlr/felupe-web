@@ -6,14 +6,11 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - pypardiso
+  - h5py
+  - meshio
+  - pyvista
   - pip
   - pip:
     - nbgitpuller
     - einsumt
-    - matadi
-    - h5py
-    - meshio
-    - trame
-    - panel
-    - pyvista
+    - felupe
