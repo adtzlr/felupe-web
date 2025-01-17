@@ -25,6 +25,7 @@ jobs:
         run: |
           cp README.md content
           jupyter lite build --contents notebooks/lite --output-dir dist
+          jupyter labextension enable jupyterview
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
