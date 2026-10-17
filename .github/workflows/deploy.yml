@@ -24,8 +24,11 @@ jobs:
       - name: Build the JupyterLite site
         run: |
           cp README.md content
-          jupyter lite build --contents notebooks/lite --output-dir dist
-          cp -R ./dist/extensions ./dist/lab
+          jupyter lite build --contents notebooks/lite --output-dir dist/jupyterlite
+          cp -R ./dist/jupyterlite/extensions ./dist/jupyterlite/lab
+      - name: Add static landing page
+        run: |
+          cp -R site/. dist/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

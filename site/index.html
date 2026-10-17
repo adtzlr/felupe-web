@@ -1,0 +1,3012 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>FElupe in the browser</title>
+<meta name="description" content="Edit and run FElupe scripts in the browser and view the deformed model in 3D.">
+<meta name="theme-color" content="#fbfcfc">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2319746f'/%3E%3Cpath d='M7 8h17M7 16h19M7 24h21M7 8v16M15.5 8l1 16M24 8l4 16' stroke='%23fff' stroke-width='2.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  (() => {
+    let theme = null;
+    try { theme = localStorage.getItem("felupe-web:theme"); } catch (error) {}
+    if (theme !== "light" && theme !== "dark") {
+      theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.dataset.theme = theme;
+  })();
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+:root {
+  --bar: 48px;
+  --radius: 6px;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --code-size: 13px;
+  --code-line: 20px;
+
+  color-scheme: light;
+  --page: #e6ecee;
+  --panel: #fbfcfc;
+  --rule: #d2dade;
+  --ink: #16232a;
+  --muted: #5b6a72;
+  --faint: #8d9aa1;
+  --accent: #19746f;
+  --accent-ink: #ffffff;
+  --hover: #e1eceb;
+  --focus: #19746f;
+  --error: #b4231a;
+  --error-soft: #fbe3df;
+  --sel: rgba(25, 116, 111, 0.22);
+  --c-kw: #6b2fc0;
+  --c-str: #0f766e;
+  --c-num: #a2560a;
+  --c-cm: #708089;
+  --c-fn: #1f55c4;
+  --c-bi: #0b7285;
+  --c-dc: #8a5a00;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #121a1e;
+  --panel: #172126;
+  --rule: #27363e;
+  --ink: #dde6ea;
+  --muted: #93a2aa;
+  --faint: #66777f;
+  --accent: #36b7a6;
+  --accent-ink: #062320;
+  --hover: #203037;
+  --focus: #5fd0c0;
+  --error: #ff8b7d;
+  --error-soft: #3b2224;
+  --sel: rgba(54, 183, 166, 0.28);
+  --c-kw: #c3a6ff;
+  --c-str: #6fd6bf;
+  --c-num: #f0c36d;
+  --c-cm: #7d8e97;
+  --c-fn: #8db4ff;
+  --c-bi: #6cd2e6;
+  --c-dc: #e7c06b;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 13px/1.45 var(--ui);
+}
+button, select, textarea { font: inherit; color: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+svg.i { width: 18px; height: 18px; flex: none; }
+
+/* header */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: calc(var(--bar) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(10px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+}
+.brand { display: flex; align-items: baseline; gap: 6px; margin-right: 10px; white-space: nowrap; }
+.brand b { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.status {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.status::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.status[data-kind="busy"]::before, .status[data-kind="ok"]::before { background: var(--accent); }
+.status[data-kind="error"] { color: var(--error); }
+.status[data-kind="error"]::before { background: var(--error); }
+.status span { overflow: hidden; text-overflow: ellipsis; }
+.progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; visibility: hidden; }
+.bar[data-busy] .progress { visibility: visible; }
+.progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28%;
+  background: var(--accent);
+  animation: slide 1.3s ease-in-out infinite;
+}
+@keyframes slide { from { left: -28%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .progress::after { animation: none; left: 0; width: 100%; opacity: 0.5; }
+}
+
+.icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon:hover { background: var(--hover); color: var(--ink); }
+.icon[aria-pressed="true"] { color: var(--accent); }
+.run {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 34px;
+  margin-left: 6px;
+  padding: 0 14px 0 11px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.run svg { width: 14px; height: 14px; }
+.run[data-state="stop"] { background: var(--ink); color: var(--panel); }
+
+/* layout: mobile first */
+.app { display: flex; flex-direction: column; }
+.view {
+  position: relative;
+  height: min(62svh, 100vw);
+  min-height: 240px;
+  overflow: hidden;
+  background: var(--page);
+  border-bottom: 1px solid var(--rule);
+}
+.code { background: var(--panel); border-bottom: 1px solid var(--rule); }
+.out { background: var(--panel); padding-bottom: env(safe-area-inset-bottom); }
+.split { display: none; }
+
+@media (min-width: 860px) {
+  body { overflow: hidden; }
+  .app {
+    display: grid;
+    height: calc(100dvh - var(--bar) - env(safe-area-inset-top));
+    grid-template-columns: var(--split, 44%) 1px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "code split view" "out split view";
+  }
+  .view { grid-area: view; height: auto; min-height: 0; border: 0; }
+  .code { grid-area: code; min-height: 0; display: flex; flex-direction: column; border: 0; }
+  .out { grid-area: out; border-top: 1px solid var(--rule); }
+  .split { display: block; grid-area: split; position: relative; z-index: 5; background: var(--rule); cursor: col-resize; touch-action: none; }
+  .split::before { content: ""; position: absolute; inset: 0 -5px; }
+  .split:focus-visible { outline-offset: 0; }
+  .editor { flex: 1; min-height: 0; }
+  .ed-scroll { height: 100%; overflow: auto; }
+  .ed-inner { min-height: 100%; }
+  .out-body, .files { height: min(30vh, 300px); max-height: none; }
+}
+
+/* editor */
+.editor { position: relative; font: var(--code-size)/var(--code-line) var(--mono); font-variant-ligatures: none; tab-size: 4; }
+.ed-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+.ed-inner { display: flex; width: max-content; min-width: 100%; min-height: 42svh; }
+.ed-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: none;
+  min-width: calc(2ch + 26px);
+  padding: 12px 10px 12px 12px;
+  background: var(--panel);
+  color: var(--faint);
+  text-align: right;
+  white-space: pre;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ed-gutter .e { color: var(--error); font-weight: 700; }
+.ed-code { position: relative; flex: 1 0 auto; }
+.ed-hl, .ed-input {
+  display: block;
+  margin: 0;
+  padding: 12px 28px 12px 6px;
+  border: 0;
+  font: inherit;
+  letter-spacing: 0;
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+  tab-size: 4;
+}
+.ed-hl { position: relative; color: var(--ink); pointer-events: none; }
+.ed-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--ink);
+  outline: none;
+}
+.ed-input::selection { background: var(--sel); }
+.ed-err {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(12px + var(--line, 0) * var(--code-line));
+  height: var(--code-line);
+  background: var(--error-soft);
+}
+.t-kw { color: var(--c-kw); }
+.t-str { color: var(--c-str); }
+.t-num { color: var(--c-num); }
+.t-cm { color: var(--c-cm); font-style: italic; }
+.t-fn { color: var(--c-fn); }
+.t-bi { color: var(--c-bi); }
+.t-dc { color: var(--c-dc); }
+
+/* output and files */
+.out-head { display: flex; align-items: center; gap: 2px; height: 38px; padding: 0 6px; }
+.out-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.out-toggle:hover { background: var(--hover); color: var(--ink); }
+.out-toggle svg { width: 16px; height: 16px; transition: transform 0.15s; }
+.out[data-collapsed] .out-toggle svg { transform: rotate(-90deg); }
+.tabs { display: flex; gap: 2px; }
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab:hover { background: var(--hover); color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); }
+.out:not([data-collapsed]) .tab[aria-selected="true"] { background: var(--hover); }
+.tab .count { color: var(--faint); font-weight: 500; font-variant-numeric: tabular-nums; }
+.tab[data-new]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.out-head .icon { margin-left: auto; width: 30px; height: 30px; }
+.out-head .icon svg { width: 16px; height: 16px; }
+.out[data-collapsed] .out-body, .out[data-collapsed] .files, .out[data-collapsed] .out-head .icon { display: none; }
+.out-body {
+  max-height: 45svh;
+  overflow: auto;
+  padding: 0 14px 14px;
+  font: 12px/18px var(--mono);
+  font-variant-ligatures: none;
+}
+.out-body pre { margin: 0; font: inherit; white-space: pre; }
+.out-body .err { color: var(--error); }
+.out-body .note { color: var(--muted); }
+.out-body img { display: block; max-width: 100%; height: auto; margin: 8px 0; border-radius: 4px; background: #fff; }
+.files { max-height: 45svh; overflow: auto; padding: 0 6px 10px; }
+.file-list { margin: 0; padding: 0; list-style: none; }
+.file { display: flex; align-items: center; gap: 2px; min-height: 34px; padding-left: 8px; border-radius: var(--radius); }
+.file:hover { background: var(--hover); }
+.file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 12px/18px var(--mono);
+  font-variant-ligatures: none;
+}
+.file[data-fresh] .file-name::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
+}
+.file-size { flex: none; margin-right: 4px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.file .icon { width: 30px; height: 30px; }
+.file .icon svg { width: 16px; height: 16px; }
+.files-empty { padding: 2px 8px 6px; color: var(--muted); }
+.files-empty p { max-width: 62ch; margin: 0 0 10px; }
+.files-empty code { color: var(--ink); font: 12px var(--mono); }
+.text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.text-button:hover { background: var(--hover); }
+.text-button svg { width: 16px; height: 16px; }
+body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* viewer */
+.view canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+.vtools { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; align-items: center; gap: 6px; pointer-events: none; }
+.vtools > * { pointer-events: auto; }
+.vtools .spacer { flex: 1; pointer-events: none; }
+.vtools .icon { width: 32px; height: 32px; border: 1px solid var(--rule); background: var(--panel); }
+.vtools .icon:hover { background: var(--hover); }
+.pick { position: relative; min-width: 0; display: block; }
+.pick select {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 32px;
+  max-width: min(280px, 58vw);
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.pick::after {
+  content: "";
+  position: absolute;
+  top: 11px;
+  right: 12px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.legend {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: min(190px, 46%);
+  color: var(--muted);
+  font: 11px/1.3 var(--ui);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.legend .cbar { height: 8px; border-radius: 2px; }
+.legend .ticks { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; }
+.triad { position: absolute; left: 6px; bottom: 4px; width: 64px; height: 64px; pointer-events: none; overflow: visible; }
+.triad text { font: 600 10px var(--ui); }
+.hint { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; color: var(--muted); text-align: center; pointer-events: none; }
+
+@media (max-width: 420px) {
+  .bar { gap: 0; padding-left: max(12px, env(safe-area-inset-left)); }
+  .brand { margin-right: 8px; }
+  .brand span { display: none; }
+  .bar .icon { width: 32px; }
+  .run { margin-left: 4px; padding: 0 11px 0 9px; }
+}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 16 16"><path d="M4.5 2.6v10.8a.6.6 0 0 0 .9.5l8.6-5.4a.6.6 0 0 0 0-1L5.4 2.1a.6.6 0 0 0-.9.5z" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 3.5v5h5"/></g></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a4.5 4.5 0 0 0 6.8.5l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.6 1.6"/><path d="M14 10.5a4.5 4.5 0 0 0-6.8-.5l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></g></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.6A8.3 8.3 0 0 1 9.4 4a8.3 8.3 0 1 0 10.6 10.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g></symbol>
+  <symbol id="i-edges" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5l16-1v16l-16 1z"/><path d="M4 10.4l16-.7M4 15.7l16-.3M9.3 4.7v16M14.7 4.4v16"/></g></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5h4M16 4h4v4M20 15v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="2.5"/></g></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M4.5 14v4.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V14"/></g></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M4.5 14v4.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V14"/></g></symbol>
+  <symbol id="i-delete" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5M10.5 11v5M13.5 11v5"/></g></symbol>
+  <symbol id="i-clear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></g></symbol>
+</svg>
+
+<header class="bar" id="bar">
+  <div class="brand"><b>FElupe</b><span id="version"></span></div>
+  <div class="status" id="status" role="status" aria-live="polite"><span id="status-text">Loading Python</span></div>
+  <button class="icon" id="reset" type="button" title="Reset script and files" aria-label="Reset script and files"><svg class="i"><use href="#i-reset"/></svg></button>
+  <button class="icon" id="share" type="button" title="Copy link to this script" aria-label="Copy link to this script"><svg class="i"><use href="#i-link"/></svg></button>
+  <button class="icon" id="theme" type="button" title="Dark theme" aria-label="Toggle dark theme"><svg class="i"><use href="#i-moon"/></svg></button>
+  <button class="run" id="run" type="button" title="Run (Ctrl+Enter)"><svg><use href="#i-play"/></svg><span>Run</span></button>
+  <div class="progress" aria-hidden="true"></div>
+</header>
+
+<main class="app" id="app">
+  <section class="view" id="view" aria-label="Model">
+    <canvas id="canvas"></canvas>
+    <div class="vtools">
+      <label class="pick" id="pick" hidden><select id="quantity" aria-label="Result"></select></label>
+      <span class="spacer"></span>
+      <button class="icon" id="edges" type="button" aria-pressed="true" title="Show edges" aria-label="Show edges"><svg class="i"><use href="#i-edges"/></svg></button>
+      <button class="icon" id="fit" type="button" title="Reset view" aria-label="Reset view"><svg class="i"><use href="#i-fit"/></svg></button>
+    </div>
+    <svg class="triad" id="triad" viewBox="0 0 64 64" aria-hidden="true"></svg>
+    <div class="legend" id="legend" hidden><div class="cbar" id="cbar"></div><div class="ticks"><span id="vmin"></span><span id="vmax"></span></div></div>
+    <div class="hint" id="hint" hidden></div>
+  </section>
+  <div class="split" id="split" role="separator" aria-orientation="vertical" aria-label="Resize panels" tabindex="0"></div>
+  <section class="code" aria-label="Script">
+    <div class="editor" id="editor">
+      <div class="ed-scroll">
+        <div class="ed-inner">
+          <div class="ed-gutter" aria-hidden="true"></div>
+          <div class="ed-code">
+            <div class="ed-err" hidden></div>
+            <pre class="ed-hl" aria-hidden="true"></pre>
+            <textarea class="ed-input" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Python script"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="out" id="out" aria-label="Output and files">
+    <div class="out-head">
+      <button class="out-toggle" id="out-toggle" type="button" aria-expanded="true" aria-label="Collapse panel"><svg><use href="#i-chev"/></svg></button>
+      <div class="tabs" role="tablist">
+        <button class="tab" id="tab-output" type="button" role="tab" aria-selected="true" aria-controls="out-body">Output</button>
+        <button class="tab" id="tab-files" type="button" role="tab" aria-selected="false" aria-controls="files">Files<span class="count" id="file-count"></span></button>
+      </div>
+      <button class="icon" id="out-clear" type="button" title="Clear output" aria-label="Clear output"><svg class="i"><use href="#i-clear"/></svg></button>
+      <button class="icon" id="file-add" type="button" title="Upload files" aria-label="Upload files" hidden><svg class="i"><use href="#i-upload"/></svg></button>
+    </div>
+    <div class="out-body" id="out-body" role="tabpanel" aria-labelledby="tab-output"></div>
+    <div class="files" id="files" role="tabpanel" aria-labelledby="tab-files" hidden>
+      <ul class="file-list" id="file-list"></ul>
+      <div class="files-empty" id="files-empty">
+        <p>Upload files to load them in the script by their name, e.g. <code>fem.mesh.read("mesh.vtk")</code>.</p>
+        <button class="text-button" id="file-add-empty" type="button"><svg><use href="#i-upload"/></svg>Upload files</button>
+      </div>
+    </div>
+    <input type="file" id="file-input" multiple hidden>
+  </section>
+</main>
+
+<script type="text/x-python" id="py-default">
+import felupe as fem
+
+mesh = fem.Cube(n=6)
+region = fem.RegionHexahedron(mesh)
+field = fem.FieldContainer([fem.Field(region, dim=3)])
+
+boundaries = fem.dof.uniaxial(field, clamped=True, return_loadcase=False)
+umat = fem.NeoHooke(mu=1, bulk=2)
+solid = fem.SolidBody(umat=umat, field=field)
+
+move = fem.math.linsteps([0, 1], num=5)
+ramp = {boundaries["move"]: move}
+step = fem.Step(items=[solid], ramp=ramp, boundaries=boundaries)
+
+job = fem.Job(steps=[step])
+job.evaluate()
+
+ax = solid.imshow("Principal Values of Cauchy Stress")
+</script>
+
+<script type="text/x-python" id="py-bridge">
+"""Bridge between FElupe in Pyodide (web worker) and the page.
+
+The plot-methods of FElupe (``plot()``, ``screenshot()``, ``imshow()``) keep using
+FElupe's own views for the point- and cell-data, only the pyvista-plotter is replaced
+by the 3D view of the page. Converged results of ``newtonraphson()`` are shown live.
+"""
+
+import contextlib
+import functools
+import importlib.machinery
+import importlib.util
+import io
+import json
+import linecache
+import math
+import os
+import sys
+import time
+import traceback
+import types
+import warnings
+
+os.environ["MPLBACKEND"] = "Agg"
+warnings.filterwarnings("ignore", message=".*non-interactive")
+warnings.filterwarnings("ignore", message=".*FigureCanvasAgg")
+
+import numpy as np
+
+import felupe as fem
+
+try:
+    import tqdm
+
+    tqdm.tqdm.monitor_interval = 0  # no threads in Pyodide
+except ImportError:
+    pass
+
+try:
+    import js
+
+    _post = js.felupeSend
+except (ImportError, AttributeError):
+    _post = None
+
+SCRIPT = "<script>"
+
+
+class _Null:
+    "Stand-in for matplotlib axes and other results of FElupe's plot-methods."
+
+    def __getattr__(self, name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return self
+
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __iter__(self):
+        return iter(())
+
+    def __repr__(self):
+        return "<shown in the 3D view>"
+
+
+_NULL = _Null()
+
+
+class _Plotter:
+    "Stand-in for a pyvista-plotter which collects the plotted parts of a scene."
+
+    def __init__(self, parts=None):
+        self.parts = list(parts or [])
+        self.select = None
+        self.factor = 1.0
+        self.undeformed = False
+
+    def add(self, part, select=None, factor=1.0, undeformed=False):
+        self.parts = [p for p in self.parts if p["mesh"] is not part["mesh"]] + [part]
+        if select is not None:
+            self.select = select
+        self.factor = float(factor)
+        self.undeformed = self.undeformed or bool(undeformed)
+        return self
+
+    def __getattr__(self, name):  # show(), add_points(), screenshot(), ...
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return lambda *args, **kwargs: self
+
+    def __repr__(self):
+        return "<shown in the 3D view>"
+
+
+class _State:
+    last = None  # ("solve", items or unknowns) or ("plot", plotter)
+    shown = 0.0
+    interval = 0.1
+    topo = None
+    topo_key = None
+    topo_id = 0
+
+
+S = _State()
+
+
+def _send(kind, meta=None, *arrays):
+    if _post is not None:
+        _post(kind, json.dumps(meta or {}), *arrays)
+
+
+# Parts of a scene: meshes with point- and cell-data
+
+
+def _is_field(obj):
+    return (
+        not isinstance(obj, np.ndarray)
+        and hasattr(obj, "values")
+        and hasattr(obj, "region")
+        and hasattr(obj, "dim")
+    )
+
+
+def _is_solid(obj):
+    return hasattr(obj, "umat") and isinstance(getattr(obj, "field", None), fem.FieldContainer)
+
+
+def _is_vector(container):
+    return container.fields[0].dim == container.region.mesh.dim
+
+
+def _part(mesh, point_data=None, cell_data=None):
+    "A mesh with point- and cell-data, as given to (or created by) FElupe's views."
+    points = np.asarray(mesh.points)
+    pdim = points.shape[1] if points.ndim == 2 else 1
+    part = {"mesh": mesh, "point": {}, "cell": {}, "alias": {}}
+    sizes = {"point": len(points), "cell": len(mesh.cells)}
+    for where, data in (("point", point_data), ("cell", cell_data)):
+        for label, values in (data or {}).items():
+            try:
+                values = np.asarray(values, dtype=float)
+            except (TypeError, ValueError):
+                continue
+            if values.ndim == 0 or len(values) != sizes[where]:
+                continue
+            values = values.reshape(len(values), -1)
+            if label == "Displacement":
+                values = values[:, :pdim]  # displacements are padded to 3d
+            if "Principal Values of " in label:
+                values = -np.sort(-values, axis=1)  # descending, as FElupe does
+            part[where][label] = values
+    point = part["point"]
+    if "Displacement" in point:
+        if np.array_equal(point.get("Field"), point["Displacement"]):
+            del point["Field"]
+            part["alias"]["Field"] = "Displacement"
+        part["point"] = {"Displacement": point.pop("Displacement"), **point}
+    return part
+
+
+def _light(container):
+    "A part with the values of the first field, as shown during the solution."
+    label = "Displacement" if _is_vector(container) else "Field"
+    return _part(container.region.mesh, {label: container.fields[0].values})
+
+
+def _full(obj):
+    "A part with all point- and cell-data of FElupe's view of a solid or field."
+    try:
+        if _is_solid(obj):
+            if _is_vector(obj.field):
+                return obj.view()._web
+            obj = obj.field
+        return obj.view()._web
+    except Exception:
+        return None
+
+
+def _usable(parts):
+    "Keep the parts with cells which can be drawn."
+    parts = [
+        part
+        for part in parts
+        if part is not None
+        and _templates(str(part["mesh"].cell_type), np.shape(part["mesh"].cells)[-1])[0]
+        is not None
+    ]
+    return parts or None
+
+
+def _parts(obj, full=False, depth=0):
+    "The parts of a displayable object (or None)."
+    if obj is None or obj is _NULL or depth > 3:
+        return None
+    if isinstance(obj, (types.ModuleType, type, np.ndarray, str, dict)):
+        return None
+    if isinstance(obj, _Plotter):
+        return obj.parts or None
+    if isinstance(obj, (list, tuple)):
+        parts = []
+        for item in obj:
+            for part in _parts(item, full, depth + 1) or []:
+                if not any(p["mesh"] is part["mesh"] for p in parts):
+                    parts.append(part)
+        return parts or None
+    if _is_solid(obj) or isinstance(obj, fem.FieldContainer):
+        container = obj.field if _is_solid(obj) else obj
+        return _usable([(_full(obj) if full else None) or _light(container)])
+    if _is_field(obj):
+        return _parts(fem.FieldContainer([obj]), full, depth + 1)
+    if isinstance(obj, fem.MeshContainer):
+        return _usable([_part(mesh) for mesh in obj.meshes])
+    if isinstance(obj, fem.Mesh):
+        return _usable([_part(obj)])
+    if isinstance(obj, fem.Region):
+        return _parts(obj.mesh, full, depth + 1)
+    for name in ("x", "field"):  # results of newtonraphson() and other items
+        child = getattr(obj, name, None)
+        if child is not None and child is not obj:
+            found = _parts(child, full, depth + 1)
+            if found:
+                return found
+    return None
+
+
+def _search(namespace):
+    "Find something to display in the namespace of the script."
+    values = [
+        value
+        for key, value in namespace.items()
+        if not key.startswith("_")
+        and not isinstance(value, (types.ModuleType, type, types.FunctionType))
+    ]
+    nested = [v for value in values if isinstance(value, (list, tuple)) for v in value]
+    solids = [v for v in values + nested if _is_solid(v)]
+    fields = [v for v in values if isinstance(v, fem.FieldContainer)]
+    meshes = [v for v in values if isinstance(v, (fem.Mesh, fem.MeshContainer))]
+    candidates = [solids, namespace.get("field"), *fields, namespace.get("mesh"), *meshes]
+    for candidate in candidates:
+        if _parts(candidate):
+            return candidate
+    return None
+
+
+# Surface triangulation
+
+_ELEMENTS = {
+    "triangle": "Triangle",
+    "triangle6": "QuadraticTriangle",
+    "quad": "Quad",
+    "quad8": "QuadraticQuad",
+    "quad9": "BiQuadraticQuad",
+    "tetra": "Tetra",
+    "tetra10": "QuadraticTetra",
+    "hexahedron": "Hexahedron",
+    "hexahedron20": "QuadraticHexahedron",
+    "hexahedron27": "TriQuadraticHexahedron",
+}
+_WEDGE = np.array(
+    [[0, 0, -1], [1, 0, -1], [0, 1, -1], [0, 0, 1], [1, 0, 1], [0, 1, 1]], dtype=float
+)
+_LINES = ("line", "line3", "VTK_LAGRANGE_LINE")
+_TEMPLATES = {}
+
+
+def _reference(cell_type, nnodes):
+    "Points of the reference cell in the node order of the mesh cells."
+    name = _ELEMENTS.get(cell_type)
+    if name is not None and hasattr(fem, name):
+        points = np.asarray(getattr(fem, name)().points, dtype=float)
+        if len(points) == nnodes:
+            return points
+    if cell_type in ("VTK_LAGRANGE_HEXAHEDRON", "VTK_LAGRANGE_QUADRILATERAL"):
+        dim = 3 if cell_type.endswith("HEXAHEDRON") else 2
+        order = int(round(nnodes ** (1 / dim))) - 1
+        Mesh = (
+            fem.mesh.CubeArbitraryOrderHexahedron
+            if dim == 3
+            else fem.mesh.RectangleArbitraryOrderQuad
+        )
+        mesh = Mesh(a=(-1.0,) * dim, b=(1.0,) * dim, order=order)
+        if mesh.cells.shape[1] == nnodes:
+            return np.asarray(mesh.points, dtype=float)[mesh.cells[0]]
+    if cell_type == "wedge" and nnodes == 6:
+        return _WEDGE
+    return None
+
+
+def _planes(points, cell_type):
+    "Planes of the faces (3d) or edges (2d) of the reference cell."
+    dim = points.shape[1]
+    lower, upper = points.min(axis=0), points.max(axis=0)
+    eye = np.eye(dim)
+    if cell_type.startswith(("tetra", "triangle")):
+        planes = [(eye[k], lower[k]) for k in range(dim)]
+        normal = np.ones(dim) / np.sqrt(dim)
+        planes.append((normal, (points @ normal).max()))
+    elif cell_type == "wedge":
+        normal = np.array([1.0, 1.0, 0.0]) / np.sqrt(2)
+        planes = [(eye[0], lower[0]), (eye[1], lower[1]), (normal, (points @ normal).max())]
+        planes += [(eye[2], lower[2]), (eye[2], upper[2])]
+    else:
+        planes = [(eye[k], c) for k in range(dim) for c in (lower[k], upper[k])]
+    scale = np.ptp(points, axis=0).max()
+    return np.array(
+        [np.abs(points @ n - c) < 1e-8 * scale for n, c in planes]
+    ).T  # (nnodes, nplanes)
+
+
+def _clip(ring):
+    "Triangulate a polygon by clipping every second vertex."
+    triangles = []
+    while len(ring) > 3:
+        n = len(ring)
+        clip = set(range(0, 2 * min(n // 2, n - 3), 2))
+        triangles += [(ring[i - 1], ring[i], ring[i + 1]) for i in clip]
+        ring = [node for i, node in enumerate(ring) if i not in clip]
+    triangles.append(tuple(ring))
+    return triangles
+
+
+def _face(points, nodes, corners, interior, normal):
+    "Triangles and edges of a face, given by local node numbers."
+    center = points[corners].mean(axis=0)
+    if normal is None:
+        u, v = np.eye(points.shape[1])[:2]
+    else:
+        u = points[corners[0]] - center
+        u -= normal * (u @ normal)
+        u /= np.linalg.norm(u)
+        v = np.cross(normal, u)
+    rel = points[nodes] - center
+    ring = [int(i) for i in np.asarray(nodes)[np.argsort(np.arctan2(rel @ v, rel @ u))]]
+    start = next(i for i, node in enumerate(ring) if node in corners)
+    ring = ring[start:] + ring[:start]
+    mid = [i for i in interior if np.linalg.norm(points[i] - center) < 1e-8]
+    if mid:
+        triangles = [(ring[i - 1], ring[i], mid[0]) for i in range(len(ring))]
+    else:
+        triangles = _clip(ring)
+    return {
+        "corners": sorted(int(c) for c in corners),
+        "triangles": np.array(triangles, dtype=np.int64),
+        "edges": np.array([(ring[i - 1], ring[i]) for i in range(len(ring))]),
+    }
+
+
+def _templates(cell_type, nnodes):
+    "Face templates of a cell type as ``(kind, faces)``."
+    key = (cell_type, nnodes)
+    if key in _TEMPLATES:
+        return _TEMPLATES[key]
+    result = (None, [])
+    if cell_type in _LINES or (cell_type not in ("vertex",) and nnodes == 2):
+        result = ("line", [])
+    else:
+        points = _reference(cell_type, nnodes)
+        if points is not None and points.shape[1] in (2, 3):
+            on = _planes(points, cell_type)
+            count = on.sum(axis=1)
+            if points.shape[1] == 2:
+                nodes = np.flatnonzero(count >= 1)
+                corners = list(np.flatnonzero(count >= 2))
+                interior = list(np.flatnonzero(count == 0))
+                result = ("surface", [_face(points, nodes, corners, interior, None)])
+            else:
+                faces = []
+                for p in range(on.shape[1]):
+                    face = on[:, p]
+                    normal = np.zeros(3)
+                    nodes = np.flatnonzero(face & (count >= 2))
+                    corners = list(np.flatnonzero(face & (count >= 3)))
+                    interior = list(np.flatnonzero(face & (count == 1)))
+                    if len(corners) >= 3:
+                        c = points[corners]
+                        normal = np.cross(c[1] - c[0], c[2] - c[0])
+                        normal /= np.linalg.norm(normal)
+                        faces.append(_face(points, nodes, corners, interior, normal))
+                result = ("volume", faces)
+    _TEMPLATES[key] = result
+    return result
+
+
+def _build(meshes):
+    "Boundary triangles (with their cells) and edges of a list of meshes."
+    shared = all(m.points is meshes[0].points for m in meshes)
+    points, offset, ncells, faces, lines = [], 0, 0, [], []
+    for i, mesh in enumerate(meshes):
+        X = np.asarray(mesh.points, dtype=float)
+        X = X.reshape(len(X), -1)
+        if not shared or i == 0:
+            points.append(X)
+        cells = np.asarray(mesh.cells)
+        cells = cells.reshape(len(cells), -1)
+        kind, templates = _templates(str(mesh.cell_type), cells.shape[1])
+        cells = cells + (0 if shared else offset)
+        if kind == "line":
+            lines.append(cells[:, :2])
+        for template in templates:
+            faces.append((kind == "volume", template, cells, ncells))
+        if not shared:
+            offset += len(X)
+        ncells += len(cells)
+    if not points:
+        return None
+    pdim = max(p.shape[1] for p in points)
+    X = np.concatenate([np.pad(p, ((0, 0), (0, pdim - p.shape[1]))) for p in points])
+
+    # keep the faces of volume cells which belong to only one cell
+    groups = {}
+    for i, (volume, template, cells, _) in enumerate(faces):
+        if volume:
+            keys = np.sort(cells[:, template["corners"]], axis=1)
+            groups.setdefault(keys.shape[1], []).append((i, keys))
+    masks = {}
+    for items in groups.values():
+        keys = np.concatenate([k for i, k in items])
+        _, inverse, counts = np.unique(
+            keys, axis=0, return_inverse=True, return_counts=True
+        )
+        once = counts[inverse.ravel()] == 1
+        start = 0
+        for i, k in items:
+            masks[i] = once[start : start + len(k)]
+            start += len(k)
+
+    triangles, owners, edges = [], [], list(lines)
+    for i, (volume, template, cells, first) in enumerate(faces):
+        index = np.flatnonzero(masks[i]) if volume else np.arange(len(cells))
+        if len(index):
+            selected = cells[index]
+            triangles.append(selected[:, template["triangles"]].reshape(-1, 3))
+            owners.append(np.repeat(index + first, len(template["triangles"])))
+            edges.append(selected[:, template["edges"]].reshape(-1, 2))
+
+    triangles = np.concatenate(triangles) if triangles else np.zeros((0, 3), int)
+    owners = np.concatenate(owners) if owners else np.zeros(0, int)
+    edges = np.concatenate(edges) if edges else np.zeros((0, 2), int)
+    if len(edges):
+        edges = np.unique(np.sort(edges, axis=1), axis=0)
+    used = np.unique(np.concatenate([triangles.ravel(), edges.ravel()]))
+    if len(used) == 0:
+        return None
+    cells, owners = np.unique(owners, return_inverse=True)
+
+    positions = np.zeros((len(used), 3), dtype=np.float32)
+    positions[:, :pdim] = X[used, :3]
+    extent = np.ptp(positions, axis=0)
+    return {
+        "used": used,
+        "cells": cells,
+        "npoints": len(X),
+        "ncells": ncells,
+        "shared": shared,
+        "pdim": pdim,
+        "planar": bool(pdim < 3 or extent[2] <= 1e-9 * max(extent.max(), 1e-300)),
+        "positions": positions,
+        "triangles": np.searchsorted(used, triangles).astype(np.uint32),
+        "owners": owners.astype(np.uint32).ravel(),
+        "edges": np.searchsorted(used, edges).astype(np.uint32),
+    }
+
+
+def _topology(meshes):
+    key = tuple(
+        (id(m), id(m.points), id(m.cells), np.shape(m.points), np.shape(m.cells))
+        + (str(m.cell_type),)
+        for m in meshes
+    )
+    check = float(sum(np.sum(m.cells) + np.sum(m.points) for m in meshes))
+    if S.topo_key == (key, check):
+        return S.topo
+    topo = _build(meshes)
+    S.topo_key = (key, check)
+    S.topo = topo
+    if topo is not None:
+        S.topo_id += 1
+        topo["id"] = S.topo_id
+        meta = {
+            "id": topo["id"],
+            "pdim": topo["pdim"],
+            "planar": topo["planar"],
+            "ncells": len(topo["cells"]),
+        }
+        _send(
+            "topo",
+            meta,
+            np.ascontiguousarray(topo["positions"].ravel()),
+            np.ascontiguousarray(topo["triangles"].ravel()),
+            np.ascontiguousarray(topo["edges"].ravel()),
+            np.ascontiguousarray(topo["owners"]),
+        )
+    return topo
+
+
+# Scenes
+
+_COMPONENTS = {
+    1: [""],
+    2: ["X", "Y"],
+    3: ["X", "Y", "Z"],
+    6: ["XX", "YY", "ZZ", "XY", "YZ", "XZ"],
+    9: ["XX", "XY", "XZ", "YX", "YY", "YZ", "ZX", "ZY", "ZZ"],
+}
+_PRINCIPAL = {
+    2: ["(Max. Principal)", "(Min. Principal)"],
+    3: ["(Max. Principal)", "(Int. Principal)", "(Min. Principal)"],
+}
+
+
+def _finite(value):
+    value = float(value)
+    return value if math.isfinite(value) else None
+
+
+def _range(values):
+    finite = values[np.isfinite(values)]
+    if not len(finite):
+        return [None, None]
+    return [_finite(finite.min()), _finite(finite.max())]
+
+
+def _quantity(label, where, values, pdim):
+    "Labels of the components and value ranges of a point- or cell-data array."
+    dim = values.shape[1]
+    principal = "Principal Values of " in label
+    vector = label == "Displacement" or label.startswith("Field")
+    if principal and dim in _PRINCIPAL:
+        components = _PRINCIPAL[dim]
+    elif pdim == 2 and dim == 3 and not vector:
+        components = ["XX", "YY", "XY"]  # 2d-tensors in reduced vector storage
+    elif pdim == 2 and dim == 4 and not vector:
+        components = ["XX", "XY", "YX", "YY"]
+    else:
+        components = _COMPONENTS.get(dim, [str(k) for k in range(dim)])
+    magnitude = not principal and dim in (2, 3) and components == _COMPONENTS[dim]
+    quantity = {
+        "label": label,
+        "where": where,
+        "dim": dim,
+        "title": label[20:] if principal else label,
+        "components": components,
+        "magnitude": magnitude,
+        "ranges": [_range(values[:, k]) for k in range(dim)],
+    }
+    if magnitude:
+        quantity["mrange"] = _range(np.linalg.norm(values, axis=1))
+    return quantity
+
+
+def _combine(parts, where, label, topo):
+    "Values of a data array for all parts (NaN for parts without this array)."
+    dims = [p[where][label].shape[1] for p in parts if label in p[where]]
+    dim = dims[0]
+    if where == "point" and topo["shared"]:
+        values = np.full((topo["npoints"], dim), np.nan)
+        for part in parts:
+            data = part[where].get(label)
+            if data is not None and data.shape[1] == dim:
+                index = np.unique(np.asarray(part["mesh"].cells))
+                values[index] = data[index]
+        return values
+    blocks = []
+    for part in parts:
+        size = len(part["mesh"].points) if where == "point" else len(part["mesh"].cells)
+        data = part[where].get(label)
+        blocks.append(data if data is not None and data.shape[1] == dim else np.full((size, dim), np.nan))
+    return np.concatenate(blocks)
+
+
+def _show(scene):
+    "Send a scene (a plotter with parts) to the 3D view."
+    parts = scene.parts
+    topo = _topology([part["mesh"] for part in parts])
+    if topo is None:
+        _send("clear")
+        return
+    quantities, blocks = [], []
+    for where, index in (("point", topo["used"]), ("cell", topo["cells"])):
+        labels = list(dict.fromkeys(label for part in parts for label in part[where]))
+        if where == "point" and "Displacement" in labels:
+            labels.remove("Displacement")
+            labels.insert(0, "Displacement")
+        for label in labels:
+            values = _combine(parts, where, label, topo)
+            quantities.append(_quantity(label, where, values, topo["pdim"]))
+            blocks.append(values[index].astype(np.float32).ravel())
+    select = None
+    if scene.select is not None:
+        label = scene.select["label"]
+        for part in parts:
+            label = part["alias"].get(label, label)
+        component = scene.select["component"]
+        if any(q["label"] == label for q in quantities):
+            select = {"label": label, "component": None if component is None else int(component)}
+    meta = {
+        "topo": topo["id"],
+        "quantities": quantities,
+        "factor": _finite(scene.factor) or 0.0,
+        "undeformed": bool(scene.undeformed),
+        "select": select,
+    }
+    values = np.concatenate(blocks) if blocks else np.zeros(0, dtype=np.float32)
+    _send("frame", meta, values)
+
+
+def _emit(scene, force=False):
+    "Show a scene in the 3D view (at most every ``interval`` seconds)."
+    now = time.perf_counter()
+    if not force and now - S.shown < S.interval:
+        return
+    try:
+        _show(scene)
+    except Exception as error:  # the viewer must never break the script
+        print(f"3D view: {type(error).__name__}: {error}", file=sys.stderr)
+    S.shown = time.perf_counter()
+    S.interval = max(0.1, 4 * (S.shown - now))
+
+
+def _final(namespace):
+    "The scene after the script: the last plot or solution, or a model of the script."
+    kind, obj = S.last or (None, None)
+    if kind == "plot":
+        return obj
+    target = obj if kind == "solve" else _search(namespace)
+    parts = _parts(target, full=True)
+    return _Plotter(parts) if parts else None
+
+
+# Patches
+
+
+def _replace(old, new):
+    for name, module in list(sys.modules.items()):
+        if module is None or not name.startswith("felupe"):
+            continue
+        for attr, value in list(vars(module).items()):
+            if value is old:
+                setattr(module, attr, new)
+
+
+def _mesh_of(obj):
+    "The mesh of an item or boundary condition (or None)."
+    if isinstance(obj, dict):
+        obj = next(iter(obj.values()), None)
+    field = getattr(obj, "field", None)
+    mesh = getattr(getattr(field, "region", None), "mesh", None)
+    return mesh if isinstance(mesh, fem.Mesh) else None
+
+
+_KEEP = ("filename", "transparent_background", "scale", "ax", "dpi", "off_screen", "notebook")
+
+
+def _patch():
+    original = fem.newtonraphson
+
+    @functools.wraps(original)
+    def newtonraphson(*args, **kwargs):
+        res = original(*args, **kwargs)
+        if getattr(res, "success", False):
+            solids = [item for item in kwargs.get("items") or [] if _is_solid(item)]
+            target = solids or getattr(res, "x", None)
+            try:
+                parts = _parts(target)
+            except Exception:
+                parts = None
+            if parts:
+                S.last = ("solve", target)
+                _emit(_Plotter(parts))
+        return res
+
+    _replace(original, newtonraphson)
+
+    # FElupe's views keep their point- and cell-data, the pyvista-mesh is not created
+    def view_init(self, mesh, point_data=None, cell_data=None, cell_type=None):
+        self.mesh = _NULL
+        self._web = _part(mesh, point_data, cell_data)
+
+    def scene_plot(
+        self,
+        name=None,
+        component=0,
+        label=None,
+        factor=1.0,
+        show_edges=True,
+        show_undeformed=True,
+        plotter=None,
+        **kwargs,
+    ):
+        if not isinstance(plotter, _Plotter):
+            plotter = _Plotter()
+        part = getattr(self, "_web", None)
+        if part is None or not _usable([part]):
+            return plotter
+        if name is not None:
+            data = part["alias"].get(name, name)
+            if data not in part["point"] and data not in part["cell"]:
+                available = ", ".join(repr(key) for key in [*part["point"], *part["cell"]])
+                raise KeyError(f"{name!r} is not available, choose one of {available}.")
+        select = None if name is None else {"label": name, "component": component}
+        plotter.add(part, select, factor, show_undeformed)
+        S.last = ("plot", plotter)
+        _emit(plotter, force=True)
+        return plotter
+
+    view = sys.modules["felupe.view._scene"].Scene
+    view.plot = scene_plot
+    sys.modules["felupe.view._mesh"].ViewMesh.__init__ = view_init
+
+    def container_plot(self, *args, plotter=None, **kwargs):
+        for key in ("colors", "opacity", "labels", "add_legend", "show_undeformed"):
+            kwargs.pop(key, None)
+        for mesh in self.meshes:
+            plotter = mesh.view().plot(*args, show_undeformed=False, plotter=plotter, **kwargs)
+        return plotter if plotter is not None else _NULL
+
+    solid = getattr(sys.modules.get("felupe.mechanics._solidbody"), "Solid", None)
+    solid_plot = getattr(solid, "plot", None)
+
+    def scalar_solid_plot(self, *args, project=None, **kwargs):
+        if not _is_vector(self.field):  # e.g. temperature
+            return self.field.plot(*args, project=project, **kwargs)
+        return solid_plot(self, *args, project=project, **kwargs)
+
+    def screenshot(self, *args, **kwargs):
+        for key in _KEEP:
+            kwargs.pop(key, None)
+        self.plot(*args, **kwargs)
+        return _NULL
+
+    def decoration(self, *args, plotter=None, **kwargs):
+        "Points, lines or glyphs which are added to a plot of the model."
+        if plotter is not None:
+            return plotter
+        mesh = _mesh_of(self)
+        return mesh.plot() if mesh is not None else _NULL
+
+    def hidden(self, *args, plotter=None, **kwargs):
+        "Plots of reference cells and quadrature points are not shown."
+        return plotter if plotter is not None else _NULL
+
+    def nothing(self, *args, **kwargs):
+        return _NULL
+
+    models = (fem.Mesh, fem.FieldContainer) + ((solid,) if solid else ())
+    shown = tuple(f"felupe.{m}" for m in ("mesh", "field", "dof", "mechanics", "thermal"))
+    hiding = tuple(f"felupe.{m}" for m in ("region", "element", "quadrature"))
+    for name, module in list(sys.modules.items()):
+        if module is None or not name.startswith("felupe"):
+            continue
+        for cls in list(vars(module).values()):
+            if not isinstance(cls, type) or not cls.__module__.startswith(shown + hiding):
+                continue
+            if "Curve" in cls.__name__ or "Material" in cls.__name__:
+                continue  # matplotlib-based plots
+            own = vars(cls)
+            if cls.__module__.startswith(hiding):
+                methods = {"plot": hidden, "screenshot": nothing, "imshow": nothing}
+            elif cls is fem.MeshContainer:
+                methods = {"plot": container_plot, "screenshot": screenshot, "imshow": screenshot}
+            elif cls in models:
+                methods = {"screenshot": screenshot, "imshow": screenshot}
+                if cls is solid:
+                    methods["plot"] = scalar_solid_plot
+            else:
+                methods = {"plot": decoration, "screenshot": screenshot, "imshow": screenshot}
+            for method, function in methods.items():
+                if callable(own.get(method)):
+                    setattr(cls, method, function)
+
+
+def _stub_pyvista():
+    "A pyvista-module whose plotters show their content in the 3D view."
+    if importlib.util.find_spec("pyvista") is not None:
+        return
+    module = types.ModuleType("pyvista")
+    module.__spec__ = importlib.machinery.ModuleSpec("pyvista", None)
+    module.Plotter = _Plotter
+
+    def getattr_(name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return _NULL
+
+    module.__getattr__ = getattr_
+    sys.modules["pyvista"] = module
+
+
+_patch()
+_stub_pyvista()
+
+
+# Entry points
+
+
+def _failure(error):
+    tb = error.__traceback__
+    while tb is not None and tb.tb_frame.f_code.co_filename != SCRIPT:
+        tb = tb.tb_next
+    text = "".join(traceback.format_exception(type(error), error, tb))
+    line = None
+    if isinstance(error, SyntaxError) and error.filename == SCRIPT:
+        line = error.lineno
+    while tb is not None:
+        if tb.tb_frame.f_code.co_filename == SCRIPT:
+            line = tb.tb_lineno
+        tb = tb.tb_next
+    missing, seen, cause = None, set(), error
+    while cause is not None and id(cause) not in seen:
+        seen.add(id(cause))
+        if isinstance(cause, ModuleNotFoundError) and cause.name:
+            missing = cause.name.split(".")[0]
+            break
+        cause = cause.__cause__ or cause.__context__
+    return {"ok": False, "error": text, "line": line, "missing": missing}
+
+
+def _figures():
+    plt = sys.modules.get("matplotlib.pyplot")
+    if plt is None:
+        return
+    for number in plt.get_fignums():
+        buffer = io.BytesIO()
+        try:
+            plt.figure(number).savefig(buffer, format="png", dpi=144, bbox_inches="tight")
+        except Exception as error:
+            print(f"Figure {number}: {type(error).__name__}: {error}", file=sys.stderr)
+            continue
+        _send("figure", {}, np.frombuffer(buffer.getvalue(), dtype=np.uint8))
+    plt.close("all")
+
+
+def run(code):
+    "Run a script and show its model. Returns a JSON string."
+    S.last, S.shown, S.interval, S.topo_key = None, 0.0, 0.1, None
+    plt = sys.modules.get("matplotlib.pyplot")
+    if plt is not None:
+        plt.close("all")
+    linecache.cache[SCRIPT] = (len(code), None, code.splitlines(True), SCRIPT)
+    namespace = {"__name__": "__main__"}
+    result = {"ok": True}
+    start = time.perf_counter()
+    try:
+        exec(compile(code, SCRIPT, "exec"), namespace)
+    except SystemExit as error:
+        if error.code not in (None, 0):
+            result = _failure(error)
+    except BaseException as error:
+        result = _failure(error)
+    result["time"] = time.perf_counter() - start
+    try:
+        scene = _final(namespace)
+        if scene is not None and scene.parts:
+            _show(scene)
+        else:
+            _send("clear")
+    except Exception as error:
+        print(f"3D view: {type(error).__name__}: {error}", file=sys.stderr)
+    _figures()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    return json.dumps(result)
+
+
+def importable(name):
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def missing_imports(code):
+    try:
+        from pyodide.code import find_imports
+
+        names = {name.split(".")[0] for name in find_imports(code)}
+    except Exception:
+        names = set()
+    return json.dumps(sorted(name for name in names if not importable(name)))
+
+
+def info():
+    import scipy
+
+    buffer = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buffer):
+            hello = fem.hello_world()
+        hello = hello if isinstance(hello, str) else buffer.getvalue()
+    except Exception:
+        hello = ""
+    return json.dumps(
+        {
+            "felupe": fem.__version__,
+            "numpy": np.__version__,
+            "scipy": scipy.__version__,
+            "python": sys.version.split()[0],
+            "hello": hello.strip("\n") + "\n" if hello.strip() else "",
+        }
+    )
+</script>
+
+<script type="text/plain" id="worker-src">
+let py = null;
+let web = null;
+const post = (message, transfer) => self.postMessage(message, transfer || []);
+const status = (text) => post({ type: "status", text });
+const quiet = { messageCallback() {}, errorCallback() {} };
+
+// the files of the page, the working directory of the scripts
+const WORK = "/home/pyodide/files";
+const HIDDEN = /(^|\/)(\.|__pycache__(\/|$))/;
+
+const decoders = { out: new TextDecoder(), err: new TextDecoder() };
+let pending = "";
+let flushed = 0;
+function flush() {
+  if (pending) post({ type: "out", text: pending });
+  pending = "";
+  flushed = performance.now();
+}
+function write(stream, bytes) {
+  pending += decoders[stream].decode(bytes, { stream: true });
+  if (pending.length > 8192 || performance.now() - flushed > 80) flush();
+  return bytes.length;
+}
+
+// called from Python: kind, JSON metadata and arrays (copied out of the wasm memory)
+self.felupeSend = (kind, meta, ...items) => {
+  flush();
+  const arrays = items.map((item) => {
+    const view = item.getBuffer();
+    try {
+      return view.data.slice();
+    } finally {
+      view.release();
+    }
+  });
+  post({ type: kind, meta: JSON.parse(meta), arrays }, arrays.map((a) => a.buffer));
+};
+
+function scan() {
+  const found = new Map();
+  const walk = (dir, prefix) => {
+    let names = [];
+    try {
+      names = py.FS.readdir(dir);
+    } catch (error) {}
+    for (const name of names) {
+      const rel = prefix + name;
+      if (name === "." || name === ".." || HIDDEN.test(rel)) continue;
+      const stat = py.FS.stat(`${dir}/${name}`);
+      if (py.FS.isDir(stat.mode)) walk(`${dir}/${name}`, `${rel}/`);
+      else if (py.FS.isFile(stat.mode)) found.set(rel, `${stat.size}:${+stat.mtime}`);
+    }
+  };
+  walk(WORK, "");
+  return found;
+}
+
+function putFile(name, data) {
+  const path = `${WORK}/${name}`;
+  py.FS.mkdirTree(path.slice(0, path.lastIndexOf("/")));
+  py.FS.writeFile(path, new Uint8Array(data));
+}
+
+function removeFile(name) {
+  try {
+    py.FS.unlink(`${WORK}/${name}`);
+  } catch (error) {}
+}
+
+function clearFiles() {
+  const remove = (dir) => {
+    for (const name of py.FS.readdir(dir)) {
+      if (name === "." || name === "..") continue;
+      const path = `${dir}/${name}`;
+      if (py.FS.isDir(py.FS.stat(path).mode)) {
+        remove(path);
+        py.FS.rmdir(path);
+      } else {
+        py.FS.unlink(path);
+      }
+    }
+  };
+  try {
+    remove(WORK);
+  } catch (error) {}
+}
+
+function enterWork() {
+  py.FS.mkdirTree(WORK);
+  py.FS.chdir(WORK);
+}
+
+// send the files which a run has created, changed or removed
+function syncBack(before) {
+  const after = scan();
+  const changed = [...after.keys()].filter((name) => before.get(name) !== after.get(name));
+  const removed = [...before.keys()].filter((name) => !after.has(name));
+  if (!changed.length && !removed.length) return;
+  const files = changed.map((name) => ({ name, data: py.FS.readFile(`${WORK}/${name}`) }));
+  post({ type: "files", files, removed }, files.map((f) => f.data.buffer));
+}
+
+async function boot({ base, felupe, bridge, files }) {
+  status("Loading Python");
+  const { loadPyodide } = await import(base + "pyodide.mjs");
+  py = await loadPyodide({ indexURL: base });
+  py.setStdout({ write: (bytes) => write("out", bytes) });
+  py.setStderr({ write: (bytes) => write("err", bytes) });
+  enterWork();
+  for (const file of files || []) putFile(file.name, file.data);
+  status("Loading SciPy");
+  const errors = [];
+  // one after another: Pyodide replaces its message callbacks per call
+  await py.loadPackage(["numpy", "scipy", "micropip"], {
+    messageCallback() {},
+    errorCallback: (message) => errors.push(message),
+  });
+  if (errors.length) throw new Error(errors.join("\n"));
+  await py.loadPackage("tqdm", quiet).catch(() => {}); // progress bars of FElupe, optional
+  status("Installing FElupe");
+  await py.runPythonAsync(
+    `import micropip\nawait micropip.install(${JSON.stringify([felupe, "tensortrax"])})`
+  );
+  status("Starting FElupe");
+  py.FS.mkdirTree("/lib/felupe_web");
+  py.FS.writeFile("/lib/felupe_web/felupe_web.py", bridge);
+  py.runPython("import sys\nsys.path.insert(0, '/lib/felupe_web')");
+  web = py.pyimport("felupe_web");
+  flush();
+  post({ type: "ready", info: JSON.parse(web.info()) });
+}
+
+async function install(name) {
+  if (web.importable(name)) return true;
+  status(`Installing ${name}`);
+  try {
+    await py.loadPackagesFromImports(`import ${name}`, quiet);
+  } catch (error) {}
+  if (web.importable(name)) return true;
+  try {
+    await py.runPythonAsync(`import micropip\nawait micropip.install(${JSON.stringify(name)})`);
+  } catch (error) {}
+  return web.importable(name);
+}
+
+async function run(code) {
+  try {
+    await py.loadPackagesFromImports(code, quiet);
+  } catch (error) {}
+  if (/\b(CharacteristicCurve|matplotlib|pyplot|plt)\b/.test(code) && !py.loadedPackages.matplotlib) {
+    status("Loading matplotlib");
+    await py.loadPackage("matplotlib", quiet);
+  }
+  // FElupe imports these packages for reading and writing files
+  if (/\bmesh\.read\b|\.write\(\s*(filename\s*=\s*)?["']|\bfem\.save\(|\.(vtk|vtu|xdmf|msh|inp|stl|med)["']/.test(code)) {
+    await install("meshio");
+  }
+  if (/\.(xdmf|h5|hdf5)["']/.test(code)) await install("h5py");
+  for (const name of JSON.parse(web.missing_imports(code))) await install(name);
+  enterWork();
+  const before = scan();
+  status("Running");
+  let result = JSON.parse(web.run(code));
+  const tried = new Set();
+  while (!result.ok && result.missing && !tried.has(result.missing)) {
+    tried.add(result.missing);
+    if (!(await install(result.missing))) break;
+    flush();
+    post({ type: "rerun" });
+    status("Running");
+    enterWork();
+    result = JSON.parse(web.run(code));
+  }
+  flush();
+  syncBack(before);
+  post({ type: "done", result });
+}
+
+async function handle(data) {
+  try {
+    if (data.type === "boot") await boot(data);
+    else if (data.type === "run") await run(data.code);
+    else if (py && data.type === "put") putFile(data.name, data.data);
+    else if (py && data.type === "remove") removeFile(data.name);
+    else if (py && data.type === "clear") clearFiles();
+  } catch (error) {
+    flush();
+    const message = String((error && (error.message || error)) || "Unknown error");
+    if (data.type === "boot") post({ type: "fatal", message });
+    else if (data.type === "run") post({ type: "done", result: { ok: false, error: message, line: null, time: 0 } });
+  }
+}
+
+// messages are handled one after another (files may arrive while Python starts)
+let queue = Promise.resolve();
+self.onmessage = ({ data }) => {
+  queue = queue.then(() => handle(data));
+};
+</script>
+
+<script type="module">
+const PYODIDE = "314.0.7";
+const PYODIDE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE}/full/`;
+
+const $ = (selector) => document.querySelector(selector);
+const root = document.documentElement;
+const params = new URLSearchParams(location.search);
+
+const store = {
+  get(key) {
+    try { return localStorage.getItem(`felupe-web:${key}`); } catch (error) { return null; }
+  },
+  set(key, value) {
+    try {
+      if (value == null) localStorage.removeItem(`felupe-web:${key}`);
+      else localStorage.setItem(`felupe-web:${key}`, value);
+    } catch (error) {}
+  },
+};
+
+// felupe=<version> pins a release, felupe=<url to .whl> installs a wheel
+function felupeRequirement() {
+  const value = (params.get("felupe") || "").trim();
+  if (/^\d[\w.+!-]*$/.test(value)) return `felupe==${value}`;
+  if (/^https?:\/\/\S+\.whl$/.test(value)) return value;
+  return "felupe";
+}
+
+// Status
+
+const bar = $("#bar");
+const statusEl = $("#status");
+const statusText = $("#status-text");
+let statusNow = { text: "", kind: "busy" };
+let flashTimer = 0;
+
+function setStatus(text, kind = "idle") {
+  statusNow = { text, kind };
+  if (flashTimer) return;
+  paintStatus(text, kind);
+}
+function paintStatus(text, kind) {
+  statusText.textContent = text;
+  statusEl.dataset.kind = kind;
+  statusEl.title = text;
+  bar.toggleAttribute("data-busy", kind === "busy");
+}
+function flash(text) {
+  clearTimeout(flashTimer);
+  paintStatus(text, statusNow.kind === "busy" ? "busy" : "ok");
+  flashTimer = setTimeout(() => {
+    flashTimer = 0;
+    paintStatus(statusNow.text, statusNow.kind);
+  }, 2200);
+}
+function seconds(t) {
+  if (t < 10) return `${t.toFixed(2)} s`;
+  if (t < 60) return `${t.toFixed(1)} s`;
+  return `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, "0")} min`;
+}
+
+// Highlighting
+
+const KEYWORDS = new Set(
+  "and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" ")
+);
+const CONSTANTS = new Set(["True", "False", "None"]);
+const BUILTINS = new Set(
+  "self cls abs all any bool dict divmod enumerate filter float format getattr hasattr int isinstance iter len list map max min next open print range repr reversed round set setattr slice sorted str sum super tuple type zip Exception ValueError TypeError RuntimeError KeyError IndexError NotImplementedError".split(" ")
+);
+const TOKENS = new RegExp(
+  [
+    String.raw`(#[^\n]*)`,
+    String.raw`((?:\b[rRbBuUfF]{1,2})?(?:"""[\s\S]*?(?:"""|$)|'''[\s\S]*?(?:'''|$)|"(?:[^"\\\n]|\\[\s\S])*(?:"|$|(?=\n))|'(?:[^'\\\n]|\\[\s\S])*(?:'|$|(?=\n))))`,
+    String.raw`(@[A-Za-z_][\w.]*)`,
+    String.raw`((?<![\w.])(?:0[xX][\da-fA-F_]+|0[oObB][\d_]+|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[jJ]?))`,
+    String.raw`([A-Za-z_]\w*)`,
+  ].join("|"),
+  "g"
+);
+const escapeHtml = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+function highlight(text) {
+  let html = "";
+  let last = 0;
+  let previous = "";
+  TOKENS.lastIndex = 0;
+  for (const match of text.matchAll(TOKENS)) {
+    const [token, comment, string, decorator, number, word] = match;
+    const gap = text.slice(last, match.index);
+    html += escapeHtml(gap);
+    let cls = "";
+    if (comment) cls = "cm";
+    else if (string) cls = "str";
+    else if (decorator) cls = "dc";
+    else if (number) cls = "num";
+    else if (word) {
+      if (KEYWORDS.has(word)) cls = "kw";
+      else if (CONSTANTS.has(word)) cls = "num";
+      else if ((previous === "def" || previous === "class") && !gap.trim()) cls = "fn";
+      else if (BUILTINS.has(word)) cls = "bi";
+      else if (/^[ \t]*\(/.test(text.slice(match.index + token.length, match.index + token.length + 16))) cls = "fn";
+    }
+    previous = word || "";
+    html += cls ? `<span class="t-${cls}">${escapeHtml(token)}</span>` : escapeHtml(token);
+    last = match.index + token.length;
+  }
+  return html + escapeHtml(text.slice(last));
+}
+
+// Editor
+
+function createEditor(host, { onRun, onChange }) {
+  const input = host.querySelector(".ed-input");
+  const code = host.querySelector(".ed-hl");
+  const gutter = host.querySelector(".ed-gutter");
+  const errorBar = host.querySelector(".ed-err");
+  let lineCount = -1;
+  let errorLine = null;
+  let frame = 0;
+
+  function render() {
+    frame = 0;
+    const text = input.value;
+    code.innerHTML = highlight(text) + (text === "" || text.endsWith("\n") ? " " : "");
+    let n = 1;
+    for (let i = text.indexOf("\n"); i >= 0; i = text.indexOf("\n", i + 1)) n++;
+    if (n !== lineCount) {
+      lineCount = n;
+      renderGutter();
+    }
+  }
+  function renderGutter() {
+    let html = "";
+    for (let i = 1; i <= lineCount; i++) {
+      html += (i === errorLine ? `<span class="e">${i}</span>` : i) + (i < lineCount ? "\n" : "");
+    }
+    gutter.innerHTML = html;
+  }
+  function schedule() {
+    if (!frame) frame = requestAnimationFrame(render);
+  }
+  function mark(line) {
+    errorLine = line && line > 0 ? line : null;
+    errorBar.hidden = !errorLine;
+    if (errorLine) errorBar.style.setProperty("--line", errorLine - 1);
+    renderGutter();
+  }
+
+  function replace(start, end, text, selStart = start + text.length, selEnd = selStart) {
+    input.focus();
+    input.setSelectionRange(start, end);
+    const done = text
+      ? document.execCommand("insertText", false, text)
+      : start === end || document.execCommand("delete");
+    if (!done) {
+      input.setRangeText(text, start, end, "end");
+      input.dispatchEvent(new Event("input"));
+    }
+    input.setSelectionRange(selStart, selEnd);
+  }
+  function lines() {
+    const v = input.value;
+    const s = input.selectionStart;
+    let e = input.selectionEnd;
+    if (e > s && v[e - 1] === "\n") e--;
+    const a = v.lastIndexOf("\n", s - 1) + 1;
+    let b = v.indexOf("\n", e);
+    if (b < 0) b = v.length;
+    return [a, b, v.slice(a, b)];
+  }
+
+  input.addEventListener("keydown", (event) => {
+    if (event.isComposing || event.keyCode === 229) return;
+    const mod = event.ctrlKey || event.metaKey;
+    const v = input.value;
+    const s = input.selectionStart;
+    const e = input.selectionEnd;
+    if (mod && event.key === "Enter") {
+      event.preventDefault();
+      onRun();
+    } else if (event.key === "Escape") {
+      input.blur();
+    } else if (event.key === "Tab" && !mod && !event.altKey) {
+      event.preventDefault();
+      const [a, b, block] = lines();
+      if (event.shiftKey) {
+        let first = 0;
+        let total = 0;
+        const out = block.split("\n").map((line, i) => {
+          const n = line.match(/^ {0,4}/)[0].length;
+          if (i === 0) first = n;
+          total += n;
+          return line.slice(n);
+        }).join("\n");
+        if (total) replace(a, b, out, Math.max(a, s - first), Math.max(a, e - total));
+      } else if (s === e || !v.slice(s, e).includes("\n")) {
+        const column = s - (v.lastIndexOf("\n", s - 1) + 1);
+        replace(s, e, " ".repeat(4 - (column % 4)));
+      } else {
+        const rows = block.split("\n");
+        replace(a, b, rows.map((line) => "    " + line).join("\n"), s + 4, e + 4 * rows.length);
+      }
+    } else if (event.key === "Enter" && !mod && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      const before = v.slice(v.lastIndexOf("\n", s - 1) + 1, s);
+      let indent = before.match(/^[ \t]*/)[0];
+      if (/[:([{]$/.test(before.replace(/#.*$/, "").trimEnd())) indent += "    ";
+      replace(s, e, "\n" + indent);
+    } else if (event.key === "Backspace" && s === e && !mod) {
+      const before = v.slice(v.lastIndexOf("\n", s - 1) + 1, s);
+      if (before.length >= 2 && /^ +$/.test(before)) {
+        event.preventDefault();
+        replace(s - (((before.length - 1) % 4) + 1), s, "");
+      }
+    } else if (mod && event.key === "/") {
+      event.preventDefault();
+      const [a, b, block] = lines();
+      const rows = block.split("\n");
+      const filled = rows.filter((line) => line.trim());
+      if (!filled.length) return;
+      let out;
+      if (filled.every((line) => /^\s*#/.test(line))) {
+        out = rows.map((line) => line.replace(/^(\s*)# ?/, "$1"));
+      } else {
+        const indent = Math.min(...filled.map((line) => line.match(/^ */)[0].length));
+        out = rows.map((line) => (line.trim() ? line.slice(0, indent) + "# " + line.slice(indent) : line));
+      }
+      const text = out.join("\n");
+      replace(a, b, text, a, a + text.length);
+    }
+  });
+  // iOS smart punctuation would turn quotes into typographic ones
+  const QUOTES = { "“": '"', "”": '"', "‘": "'", "’": "'" };
+  input.addEventListener("beforeinput", (event) => {
+    if (event.inputType === "insertText" && QUOTES[event.data]) {
+      event.preventDefault();
+      replace(input.selectionStart, input.selectionEnd, QUOTES[event.data]);
+    }
+  });
+  input.addEventListener("input", () => {
+    if (errorLine) mark(null);
+    schedule();
+    onChange(input.value);
+  });
+  input.addEventListener("scroll", () => {
+    input.scrollTop = 0;
+    input.scrollLeft = 0;
+  });
+
+  return {
+    get value() {
+      return input.value;
+    },
+    set value(text) {
+      input.value = text;
+      mark(null);
+      render();
+    },
+    mark,
+  };
+}
+
+// Output
+
+// a minimal terminal: carriage return, cursor up/down/left/right, erase line;
+// colors are dropped (enough for the progress bars of tqdm)
+const CONTROL = /\x1b\[([\d;?]*)([A-Za-z])|\x1b.?|\r|\n|[^\x1b\r\n]+/g;
+
+function createOutput(box) {
+  let term = null;
+  let carry = "";
+  const urls = [];
+
+  const atBottom = () => box.scrollHeight - box.scrollTop - box.clientHeight < 24;
+  function follow(stick) {
+    if (stick) box.scrollTop = box.scrollHeight;
+  }
+  function terminal() {
+    if (!term) {
+      const pre = document.createElement("pre");
+      box.append(pre);
+      term = { pre, lines: [], nodes: [], row: 0, col: 0 };
+    }
+    return term;
+  }
+  function write(chunk) {
+    let text = carry + chunk;
+    const partial = text.match(/\x1b(\[[\d;?]*)?$/);
+    carry = partial ? partial[0] : "";
+    if (partial) text = text.slice(0, partial.index);
+    const stick = atBottom();
+    const t = terminal();
+    const dirty = new Set();
+    const ensure = (row) => {
+      while (t.lines.length <= row) {
+        t.lines.push("");
+        t.nodes.push(t.pre.appendChild(document.createTextNode("\n")));
+      }
+    };
+    for (const [token, params, command] of text.matchAll(CONTROL)) {
+      if (command) {
+        const n = parseInt(params, 10) || 1;
+        if (command === "A") t.row = Math.max(0, t.row - n);
+        else if (command === "B") t.row += n;
+        else if (command === "C") t.col += n;
+        else if (command === "D") t.col = Math.max(0, t.col - n);
+        else if (command === "G") t.col = n - 1;
+        else if (command === "K") {
+          ensure(t.row);
+          const line = t.lines[t.row];
+          const mode = parseInt(params, 10) || 0;
+          t.lines[t.row] = mode === 2 ? "" : mode === 1 ? " ".repeat(t.col) + line.slice(t.col) : line.slice(0, t.col);
+          dirty.add(t.row);
+        }
+      } else if (token === "\r") {
+        t.col = 0;
+      } else if (token === "\n") {
+        ensure(t.row);
+        t.row++;
+        t.col = 0;
+      } else if (token[0] !== "\x1b") {
+        ensure(t.row);
+        const line = t.lines[t.row].padEnd(t.col);
+        t.lines[t.row] = line.slice(0, t.col) + token + line.slice(t.col + token.length);
+        t.col += token.length;
+        dirty.add(t.row);
+      }
+    }
+    for (const row of dirty) t.nodes[row].data = t.lines[row] + "\n";
+    if (t.lines.length > 5000) {
+      t.nodes.splice(0, 1000).forEach((node) => node.remove());
+      t.lines.splice(0, 1000);
+      t.row = Math.max(0, t.row - 1000);
+    }
+    follow(stick);
+  }
+  function block(text, cls) {
+    const stick = atBottom();
+    const el = document.createElement("pre");
+    el.className = cls;
+    el.textContent = text.replace(/\n+$/, "");
+    box.append(el);
+    term = null;
+    follow(stick);
+  }
+  function figure(bytes) {
+    const stick = atBottom();
+    const url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    urls.push(url);
+    const img = new Image();
+    img.alt = "Figure";
+    img.onload = () => {
+      img.style.width = `${img.naturalWidth / 2}px`;
+      follow(stick);
+    };
+    img.src = url;
+    box.append(img);
+    term = null;
+  }
+  function clear() {
+    box.textContent = "";
+    term = null;
+    carry = "";
+    urls.splice(0).forEach((url) => URL.revokeObjectURL(url));
+  }
+  return { write, error: (text) => block(text, "err"), note: (text) => block(text, "note"), figure, clear };
+}
+
+// Viewer
+
+const VIRIDIS = [
+  [0.2777273272234177, 0.005407344544966578, 0.3340998053353061],
+  [0.1050930431085774, 1.404613529898575, 1.384590162594685],
+  [-0.3308618287255563, 0.214847559468213, 0.09509516302823659],
+  [-4.634230498983486, -5.799100973351585, -19.33244095627987],
+  [6.228269936347081, 14.17993336680509, 56.69055260068105],
+  [4.776384997670288, -13.74514537774601, -65.35303263337234],
+  [-5.435455855934631, 4.645852612178535, 26.3124352495832],
+];
+const LUT_SRGB = new Float32Array(256 * 3);
+const LUT_LINEAR = new Float32Array(256 * 3);
+for (let i = 0; i < 256; i++) {
+  const t = i / 255;
+  for (let k = 0; k < 3; k++) {
+    let c = 0;
+    for (let p = 6; p >= 0; p--) c = c * t + VIRIDIS[p][k];
+    c = Math.min(1, Math.max(0, c));
+    LUT_SRGB[3 * i + k] = c;
+    LUT_LINEAR[3 * i + k] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }
+}
+$("#cbar").style.background = `linear-gradient(90deg, ${Array.from({ length: 11 }, (_, i) => {
+  const j = Math.round((i / 10) * 255) * 3;
+  const rgb = [0, 1, 2].map((k) => Math.round(LUT_SRGB[j + k] * 255)).join(" ");
+  return `rgb(${rgb}) ${i * 10}%`;
+}).join(", ")})`;
+
+function formatValue(value, scale) {
+  if (!Number.isFinite(value)) return String(value);
+  if (Math.abs(value) <= 1e-9 * scale) return "0";
+  const a = Math.abs(value);
+  if (a >= 1e-3 && a < 1e5) return String(+value.toPrecision(4));
+  return value.toExponential(2);
+}
+
+const THEMES = {
+  light: { plain: 0xadbcc5, edges: 0x0d171c, edgeOpacity: 0.3, axes: ["#c8382c", "#2c8a3c", "#2a62c6"] },
+  dark: { plain: 0x8ea0aa, edges: 0x040809, edgeOpacity: 0.45, axes: ["#ff7366", "#62cf72", "#72a8ff"] },
+};
+
+async function createViewer(host) {
+  const THREE = await import("three");
+  const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
+
+  const canvas = host.querySelector("canvas");
+  const triad = host.querySelector("#triad");
+  const legend = host.querySelector("#legend");
+  const pick = host.querySelector("#pick");
+  const select = host.querySelector("#quantity");
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 1000);
+  scene.add(camera);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.52 * Math.PI));
+  const light = new THREE.DirectionalLight(0xffffff, 0.58 * Math.PI);
+  light.position.set(-0.35, 0.55, 1);
+  camera.add(light, light.target);
+
+  const surface = { flatShading: true, side: THREE.DoubleSide, shininess: 18, specular: 0x151515, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
+  const materials = {
+    color: new THREE.MeshPhongMaterial({ ...surface, vertexColors: true }),
+    plain: new THREE.MeshPhongMaterial({ ...surface }),
+    edges: new THREE.LineBasicMaterial({ transparent: true }),
+    lines: new THREE.LineBasicMaterial({ vertexColors: true }),
+    linesPlain: new THREE.LineBasicMaterial(),
+    undeformed: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }),
+  };
+  const plain = new THREE.Color(); // linear color for points and cells without values
+  const referenceBox = new THREE.Box3();
+
+  let theme = THEMES.light;
+  let controls = null;
+  let zUp = null;
+  let autoFit = true;
+  let dirty = true;
+  let model = null;
+  let frame = null;
+  let options = [];
+  let choice = store.get("quantity");
+  let showEdges = store.get("edges") !== "0";
+  const box = new THREE.Box3();
+
+  function setUp(z) {
+    if (z === zUp && controls) return;
+    zUp = z;
+    camera.up.set(0, z ? 0 : 1, z ? 1 : 0);
+    if (controls) controls.dispose();
+    controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.14;
+    controls.screenSpacePanning = true;
+    controls.addEventListener("start", () => { autoFit = false; });
+    controls.addEventListener("change", () => { dirty = true; });
+  }
+  setUp(true);
+
+  function fit(resetDirection) {
+    if (!model || box.isEmpty()) return;
+    const center = box.getCenter(new THREE.Vector3());
+    const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1e-9);
+    let direction;
+    if (resetDirection) direction = model.planar ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0.9, -1.6, 1);
+    else direction = camera.position.clone().sub(controls.target);
+    if (direction.lengthSq() < 1e-30) direction.set(0.9, -1.6, 1);
+    direction.normalize();
+    const vertical = (camera.fov * Math.PI) / 180;
+    const horizontal = 2 * Math.atan(Math.tan(vertical / 2) * camera.aspect);
+    const distance = (radius / Math.sin(Math.min(vertical, horizontal) / 2)) * 1.12;
+    camera.position.copy(center).addScaledVector(direction, distance);
+    camera.near = distance / 100;
+    camera.far = distance * 100;
+    camera.updateProjectionMatrix();
+    controls.target.copy(center);
+    camera.lookAt(center);
+    controls.update();
+    dirty = true;
+  }
+
+  function clearModel() {
+    if (!model) return;
+    scene.remove(model.group);
+    model.group.traverse((obj) => obj.geometry && obj.geometry.dispose());
+    model = null;
+    frame = null;
+  }
+
+  // points: positions of the (warped) mesh-points for the edges; faces: three vertices
+  // per triangle, colored by point-data (interpolated) or by cell-data (flat)
+  function setTopo(meta, [positions, triangles, edges, owners]) {
+    const previous = model;
+    clearModel();
+    const n = positions.length / 3;
+    const ntri = triangles.length / 3;
+    const dynamic = (size) => new THREE.BufferAttribute(new Float32Array(size), 3).setUsage(THREE.DynamicDrawUsage);
+    const points = dynamic(n * 3);
+    points.array.set(positions);
+    const pointColor = dynamic(n * 3);
+    const group = new THREE.Group();
+    let mesh = null;
+    let wire = null;
+    let ghost = null;
+    let faces = null;
+    let faceColor = null;
+    if (ntri) {
+      faces = dynamic(ntri * 9);
+      faceColor = dynamic(ntri * 9);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", faces);
+      geometry.setAttribute("color", faceColor);
+      mesh = new THREE.Mesh(geometry, materials.plain);
+      mesh.frustumCulled = false;
+      group.add(mesh);
+      const reference = new THREE.BufferGeometry();
+      reference.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      reference.setIndex(new THREE.BufferAttribute(triangles, 1));
+      ghost = new THREE.Mesh(reference, materials.undeformed);
+      ghost.frustumCulled = false;
+      ghost.visible = false;
+      group.add(ghost);
+    }
+    if (edges.length) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", points);
+      geometry.setAttribute("color", pointColor);
+      geometry.setIndex(new THREE.BufferAttribute(edges, 1));
+      wire = new THREE.LineSegments(geometry, mesh ? materials.edges : materials.linesPlain);
+      wire.frustumCulled = false;
+      wire.visible = showEdges || !mesh;
+      group.add(wire);
+    }
+    scene.add(group);
+    model = {
+      id: meta.id, planar: meta.planar, ncells: meta.ncells || 0, n, ntri,
+      reference: positions, triangles, owners, points, pointColor, faces, faceColor,
+      group, mesh, wire, ghost,
+    };
+    referenceBox.setFromArray(positions);
+    const newView = !previous || previous.planar !== meta.planar;
+    setUp(!meta.planar);
+    if (newView) autoFit = true;
+    apply();
+    if (autoFit) fit(newView);
+    host.querySelector("#hint").hidden = true;
+    dirty = true;
+  }
+
+  function keyOf(q, component) {
+    return `${q.where}|${q.label}|${component < 0 ? "m" : component}`;
+  }
+
+  function buildOptions(quantities, preferred) {
+    const groups = quantities.map((q, index) => {
+      const items = [];
+      if (q.magnitude) items.push({ key: keyOf(q, -1), label: `${q.title} Magnitude`, index, component: -1 });
+      q.components.forEach((c, k) => {
+        items.push({ key: keyOf(q, k), label: c ? `${q.title} ${c}` : q.title, index, component: k });
+      });
+      return { label: q.label, items };
+    });
+    const list = groups.flatMap((g) => g.items);
+    const same = list.length === options.length && list.every((o, i) => o.key === options[i].key);
+    options = list;
+    if (!same) {
+      const option = (o) => new Option(o.label, o.key);
+      select.replaceChildren(
+        ...(groups.length > 1
+          ? groups.map((g) => {
+              const el = document.createElement("optgroup");
+              el.label = g.label;
+              el.append(...g.items.map(option));
+              return el;
+            })
+          : list.map(option))
+      );
+    }
+    // a quantity named in plot() is shown, otherwise the last choice of the viewer
+    const q = preferred && quantities.find((x) => x.label === preferred.label);
+    if (q) {
+      const c = preferred.component;
+      choice = keyOf(q, c == null ? (q.magnitude ? -1 : 0) : Math.max(0, Math.min(c, q.dim - 1)));
+    } else {
+      const stored = store.get("quantity");
+      if (list.some((o) => o.key === stored)) choice = stored;
+      else if (!list.some((o) => o.key === choice)) choice = list.length ? list[0].key : null;
+    }
+    select.value = choice || "";
+    pick.hidden = !list.length;
+  }
+
+  function setFrame(meta, [values]) {
+    if (!model || meta.topo !== model.id) return;
+    let offset = 0;
+    const quantities = meta.quantities.map((q) => {
+      const item = { ...q, offset };
+      offset += q.dim * (q.where === "cell" ? model.ncells : model.n);
+      return item;
+    });
+    frame = { quantities, values, factor: meta.factor ?? 1, undeformed: !!meta.undeformed };
+    buildOptions(quantities, meta.select);
+    apply();
+  }
+
+  function apply() {
+    if (!model) return;
+    const { n, ntri, reference, triangles, owners, points, pointColor, faces, faceColor, mesh, wire, ghost } = model;
+    const V = frame ? frame.values : null;
+
+    // warp the mesh-points by the displacements
+    const P = points.array;
+    const warp = frame && frame.quantities.find((q) => q.where === "point" && q.label === "Displacement");
+    P.set(reference);
+    if (warp) {
+      const { offset, dim } = warp;
+      const factor = frame.factor;
+      for (let i = 0; i < n; i++) {
+        for (let k = 0; k < Math.min(dim, 3); k++) {
+          const u = V[offset + i * dim + k];
+          if (Number.isFinite(u)) P[3 * i + k] += factor * u;
+        }
+      }
+    }
+    points.needsUpdate = true;
+    if (faces) {
+      const F = faces.array;
+      for (let t = 0; t < ntri * 3; t++) {
+        const j = 3 * triangles[t];
+        F[3 * t] = P[j];
+        F[3 * t + 1] = P[j + 1];
+        F[3 * t + 2] = P[j + 2];
+      }
+      faces.needsUpdate = true;
+    }
+    if (ghost) ghost.visible = !!(warp && frame.undeformed && frame.factor);
+
+    // colors
+    const option = frame && options.find((o) => o.key === choice);
+    const q = option && frame.quantities[option.index];
+    if (q && (q.where === "point" || mesh)) {
+      const count = q.where === "cell" ? model.ncells : n;
+      const s = new Float32Array(count);
+      for (let i = 0; i < count; i++) {
+        const base = q.offset + i * q.dim;
+        if (option.component >= 0) {
+          s[i] = V[base + option.component];
+        } else {
+          let sum = 0;
+          for (let k = 0; k < q.dim; k++) sum += V[base + k] ** 2;
+          s[i] = Math.sqrt(sum);
+        }
+      }
+      let [min, max] = (option.component >= 0 ? q.ranges[option.component] : q.mrange) || [null, null];
+      if (min == null || max == null) {
+        min = Infinity;
+        max = -Infinity;
+        for (const value of s) {
+          if (value < min) min = value;
+          if (value > max) max = value;
+        }
+      }
+      const range = max - min;
+      const paint = (C, j, value) => {
+        if (!Number.isFinite(value)) {
+          C[j] = plain.r;
+          C[j + 1] = plain.g;
+          C[j + 2] = plain.b;
+          return;
+        }
+        const t = range > 0 ? Math.min(1, Math.max(0, (value - min) / range)) : 0.5;
+        const l = 3 * Math.round(t * 255);
+        C[j] = LUT_LINEAR[l];
+        C[j + 1] = LUT_LINEAR[l + 1];
+        C[j + 2] = LUT_LINEAR[l + 2];
+      };
+      if (q.where === "point") {
+        const C = pointColor.array;
+        for (let i = 0; i < n; i++) paint(C, 3 * i, s[i]);
+        pointColor.needsUpdate = true;
+        if (faceColor) {
+          const D = faceColor.array;
+          for (let t = 0; t < ntri * 3; t++) {
+            const j = 3 * triangles[t];
+            D[3 * t] = C[j];
+            D[3 * t + 1] = C[j + 1];
+            D[3 * t + 2] = C[j + 2];
+          }
+        }
+      } else {
+        const D = faceColor.array;
+        for (let t = 0; t < ntri; t++) {
+          paint(D, 9 * t, s[owners[t]]);
+          D.copyWithin(9 * t + 3, 9 * t, 9 * t + 3);
+          D.copyWithin(9 * t + 6, 9 * t, 9 * t + 3);
+        }
+      }
+      if (faceColor) faceColor.needsUpdate = true;
+      if (mesh) mesh.material = materials.color;
+      else if (wire) wire.material = materials.lines;
+      const scale = Math.max(Math.abs(min), Math.abs(max));
+      host.querySelector("#vmin").textContent = formatValue(min, scale);
+      host.querySelector("#vmax").textContent = range > 0 ? formatValue(max, scale) : "";
+      legend.hidden = false;
+    } else {
+      if (mesh) mesh.material = materials.plain;
+      else if (wire) wire.material = materials.linesPlain;
+      legend.hidden = true;
+    }
+    box.setFromBufferAttribute(points);
+    if (ghost && ghost.visible) box.union(referenceBox);
+    if (autoFit) fit(false);
+    dirty = true;
+  }
+
+  function clear(message) {
+    clearModel();
+    options = [];
+    legend.hidden = true;
+    pick.hidden = true;
+    const hint = host.querySelector("#hint");
+    hint.textContent = message || "";
+    hint.hidden = !message;
+    dirty = true;
+  }
+
+  function reset() {
+    autoFit = true;
+    fit(true);
+  }
+
+  function setEdges(on) {
+    showEdges = on;
+    store.set("edges", on ? null : "0");
+    if (model && model.wire && model.mesh) model.wire.visible = on;
+    dirty = true;
+  }
+
+  function setTheme(name) {
+    theme = THEMES[name] || THEMES.light;
+    materials.plain.color.set(theme.plain);
+    materials.linesPlain.color.set(theme.plain);
+    materials.edges.color.set(theme.edges);
+    materials.edges.opacity = theme.edgeOpacity;
+    materials.undeformed.color.set(theme.plain);
+    plain.set(theme.plain);
+    apply();
+    dirty = true;
+  }
+
+  select.addEventListener("change", () => {
+    choice = select.value;
+    store.set("quantity", choice);
+    apply();
+  });
+  canvas.addEventListener("dblclick", reset);
+
+  const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+  const inverse = new THREE.Quaternion();
+  function drawTriad() {
+    triad.style.visibility = model ? "visible" : "hidden";
+    inverse.copy(camera.quaternion).invert();
+    triad.innerHTML = axes
+      .map((axis, k) => ({ v: axis.clone().applyQuaternion(inverse), k }))
+      .sort((a, b) => a.v.z - b.v.z)
+      .filter(({ v }) => Math.hypot(v.x, v.y) > 0.2)
+      .map(({ v, k }) => {
+        const c = theme.axes[k];
+        const x = 32 + v.x * 18;
+        const y = 32 - v.y * 18;
+        return `<line x1="32" y1="32" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${c}" stroke-width="2" stroke-linecap="round"/>` +
+          `<text x="${(32 + v.x * 26).toFixed(1)}" y="${(32 - v.y * 26).toFixed(1)}" fill="${c}" text-anchor="middle" dominant-baseline="central">${"XYZ"[k]}</text>`;
+      })
+      .join("");
+  }
+
+  new ResizeObserver(() => {
+    const w = host.clientWidth;
+    const h = host.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    if (autoFit) fit(false);
+    dirty = true;
+  }).observe(host);
+
+  (function loop() {
+    requestAnimationFrame(loop);
+    if (controls.update()) dirty = true;
+    if (!dirty) return;
+    dirty = false;
+    renderer.render(scene, camera);
+    drawTriad();
+  })();
+
+  return { setTopo, setFrame, clear, reset, setEdges, setTheme, get edges() { return showEdges; } };
+}
+
+// App
+
+const output = createOutput($("#out-body"));
+const DEFAULT = $("#py-default").textContent.replace(/^\n/, "");
+let defaultCode = DEFAULT;
+let saveTimer = 0;
+
+const editor = createEditor($("#editor"), {
+  onRun: () => run(),
+  onChange(value) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => store.set("code", value === defaultCode ? null : value), 300);
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  },
+});
+
+const b64 = {
+  encode(bytes) {
+    let s = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  },
+  decode(text) {
+    return Uint8Array.from(atob(text.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  },
+};
+async function pack(text) {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+  return b64.encode(new Uint8Array(await new Response(stream).arrayBuffer()));
+}
+async function unpack(text) {
+  const stream = new Blob([b64.decode(text)]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Response(stream).text();
+}
+async function codeFromHash() {
+  const match = location.hash.match(/^#code=([\w-]+)$/);
+  if (!match) return null;
+  try {
+    return await unpack(match[1]);
+  } catch (error) {
+    return null;
+  }
+}
+
+/* viewer: created asynchronously, messages are buffered until it is ready */
+let viewer = null;
+const early = { topo: null, frame: null, clear: null };
+function toViewer(kind, meta, arrays) {
+  if (!viewer) {
+    if (kind === "topo") Object.assign(early, { topo: [meta, arrays], frame: null, clear: null });
+    else if (kind === "frame") early.frame = [meta, arrays];
+    else Object.assign(early, { topo: null, frame: null, clear: [meta && meta.message] });
+    return;
+  }
+  if (kind === "topo") viewer.setTopo(meta, arrays);
+  else if (kind === "frame") viewer.setFrame(meta, arrays);
+  else viewer.clear(meta && meta.message);
+}
+createViewer($("#view"))
+  .then((v) => {
+    viewer = v;
+    viewer.setTheme(root.dataset.theme);
+    $("#edges").setAttribute("aria-pressed", String(viewer.edges));
+    if (early.topo) viewer.setTopo(...early.topo);
+    if (early.frame) viewer.setFrame(...early.frame);
+    if (early.clear) viewer.clear(...early.clear);
+  })
+  .catch((error) => {
+    const hint = $("#hint");
+    hint.textContent = "The 3D view could not be started. WebGL or the three.js download is unavailable.";
+    hint.hidden = false;
+    console.error(error);
+  });
+
+/* worker */
+// a data: URL works for pages on a server and for local files (file://), where Chrome
+// refuses module workers from blob: URLs
+const workerUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent($("#worker-src").textContent)}`;
+const bridge = $("#py-bridge").textContent;
+let worker = null;
+let phase = "booting";
+let queued = false; // a click on Run while Python is loading
+let runLabel = "Running";
+let runStart = 0;
+let ticker = 0;
+const runButton = $("#run");
+
+function setRunButton(running) {
+  runButton.dataset.state = running ? "stop" : "run";
+  runButton.querySelector("use").setAttribute("href", running ? "#i-stop" : "#i-play");
+  runButton.querySelector("span").textContent = running ? "Stop" : "Run";
+  runButton.title = running ? "Stop" : "Run (Ctrl+Enter)";
+}
+
+function boot() {
+  if (worker) worker.terminate();
+  phase = "booting";
+  setStatus("Loading Python", "busy");
+  worker = new Worker(workerUrl, { type: "module" });
+  worker.onmessage = onMessage;
+  worker.onerror = (event) => {
+    event.preventDefault();
+    failed(event.message || "The Python worker stopped.");
+  };
+  const list = [...files].map(([name, file]) => ({ name, data: file.data }));
+  worker.postMessage({ type: "boot", base: PYODIDE_URL, felupe: felupeRequirement(), bridge, files: list });
+}
+
+function failed(message) {
+  phase = "failed";
+  clearInterval(ticker);
+  setRunButton(false);
+  setStatus("Python failed to load", "error");
+  output.error(`${message}\n\nPython runs with Pyodide from cdn.jsdelivr.net and installs FElupe from PyPI. Check the connection and press Run to try again.`);
+  expandOutput();
+}
+
+function tick() {
+  const t = (performance.now() - runStart) / 1000;
+  setStatus(t >= 1 ? `${runLabel} ${Math.floor(t)} s` : runLabel, "busy");
+}
+
+function run() {
+  if (phase === "running") return stop();
+  if (phase !== "ready") {
+    queued = true;
+    if (phase === "failed") boot();
+    return;
+  }
+  queued = false;
+  phase = "running";
+  output.clear();
+  editor.mark(null);
+  for (const file of files.values()) file.fresh = false;
+  renderFiles();
+  setRunButton(true);
+  runLabel = "Running";
+  runStart = performance.now();
+  tick();
+  ticker = setInterval(tick, 250);
+  worker.postMessage({ type: "run", code: editor.value });
+}
+
+function stop() {
+  worker.terminate();
+  clearInterval(ticker);
+  setRunButton(false);
+  output.note("Stopped.");
+  boot();
+}
+
+function finish(result) {
+  clearInterval(ticker);
+  phase = "ready";
+  setRunButton(false);
+  if (result.ok) {
+    setStatus(`Done in ${seconds(result.time || 0)}`, "ok");
+  } else {
+    output.error(result.error || "Error");
+    editor.mark(result.line);
+    setStatus(result.line ? `Error in line ${result.line}` : "Error", "error");
+    expandOutput();
+  }
+  if (queued) run();
+}
+
+function onMessage({ data }) {
+  switch (data.type) {
+    case "status":
+      if (phase === "running") {
+        runLabel = data.text;
+        tick();
+      } else {
+        setStatus(data.text, "busy");
+      }
+      break;
+    case "ready": {
+      phase = "ready";
+      const { info } = data;
+      $("#version").textContent = info.felupe;
+      $("#version").title = `FElupe ${info.felupe}, Python ${info.python}, NumPy ${info.numpy}, SciPy ${info.scipy}, Pyodide ${PYODIDE}`;
+      if (info.hello && info.hello !== defaultCode) {
+        if (editor.value === defaultCode) editor.value = info.hello;
+        defaultCode = info.hello;
+      }
+      setStatus("Ready", "idle");
+      if (queued) run();
+      break;
+    }
+    case "fatal":
+      failed(data.message);
+      break;
+    case "out":
+      output.write(data.text);
+      break;
+    case "rerun":
+      output.clear();
+      break;
+    case "figure":
+      output.figure(data.arrays[0]);
+      break;
+    case "topo":
+    case "frame":
+      toViewer(data.type, data.meta, data.arrays);
+      break;
+    case "clear":
+      toViewer("clear", { message: "No mesh or field to show" });
+      break;
+    case "files":
+      receiveFiles(data.files, data.removed);
+      break;
+    case "done":
+      finish(data.result);
+      break;
+  }
+}
+
+/* output and files panel */
+const outPane = $("#out");
+const outToggle = $("#out-toggle");
+const tabs = { output: $("#tab-output"), files: $("#tab-files") };
+let tab = store.get("tab") === "files" ? "files" : "output";
+function setPanel(open, remember) {
+  outPane.toggleAttribute("data-collapsed", !open);
+  outToggle.setAttribute("aria-expanded", String(open));
+  outToggle.setAttribute("aria-label", open ? "Collapse panel" : "Expand panel");
+  if (remember) store.set("output", open ? "1" : "0");
+  if (open && tab === "files") tabs.files.removeAttribute("data-new");
+}
+function showTab(name, remember) {
+  tab = name;
+  for (const [key, el] of Object.entries(tabs)) el.setAttribute("aria-selected", String(key === name));
+  $("#out-body").hidden = name !== "output";
+  $("#files").hidden = name !== "files";
+  $("#out-clear").hidden = name !== "output";
+  $("#file-add").hidden = name !== "files";
+  if (remember) store.set("tab", name);
+}
+function expandOutput() {
+  showTab("output", false);
+  setPanel(true, false);
+}
+// on phones, the panel is below the script
+function revealPanel() {
+  if (matchMedia("(min-width: 860px)").matches) return;
+  const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  requestAnimationFrame(() => outPane.scrollIntoView({ block: "nearest", behavior: smooth ? "smooth" : "auto" }));
+}
+for (const [name, el] of Object.entries(tabs)) {
+  el.addEventListener("click", () => {
+    if (tab === name && !outPane.hasAttribute("data-collapsed")) {
+      setPanel(false, true);
+    } else {
+      showTab(name, true);
+      setPanel(true, true);
+      revealPanel();
+    }
+  });
+}
+const outSaved = store.get("output");
+showTab(tab, false);
+setPanel(outSaved ? outSaved === "1" : matchMedia("(min-width: 860px)").matches, false);
+outToggle.addEventListener("click", () => setPanel(outPane.hasAttribute("data-collapsed"), true));
+$("#out-clear").addEventListener("click", () => output.clear());
+
+/* files: kept here and in IndexedDB, mirrored into the working directory of Python */
+const files = new Map(); // name -> { data: Uint8Array, fresh: written by the last run }
+const fileDb = (() => {
+  let ready = null;
+  const open = () =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open("felupe-web", 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("files");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error("IndexedDB is blocked"));
+    });
+  async function transaction(mode, action) {
+    try {
+      ready = ready || open().catch((error) => {
+        ready = null;
+        throw error;
+      });
+      const db = await ready;
+      return await new Promise((resolve, reject) => {
+        const t = db.transaction("files", mode);
+        const request = action(t.objectStore("files"));
+        t.oncomplete = () => resolve(request.result);
+        t.onerror = t.onabort = () => reject(t.error);
+      });
+    } catch (error) {
+      return undefined; // files stay in memory only
+    }
+  }
+  return {
+    all: () => transaction("readonly", (s) => s.getAll()),
+    put: (name, data) => transaction("readwrite", (s) => s.put({ name, data }, name)),
+    remove: (name) => transaction("readwrite", (s) => s.delete(name)),
+    clear: () => transaction("readwrite", (s) => s.clear()),
+  };
+})();
+
+function formatSize(bytes) {
+  if (bytes < 1000) return `${bytes} B`;
+  const units = ["kB", "MB", "GB"];
+  let value = bytes / 1000;
+  let i = 0;
+  while (value >= 1000 && i < units.length - 1) {
+    value /= 1000;
+    i++;
+  }
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
+}
+
+function iconButton(icon, label, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "icon";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.innerHTML = `<svg class="i"><use href="#${icon}"/></svg>`;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function renderFiles() {
+  const names = [...files.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  $("#file-list").replaceChildren(
+    ...names.map((name) => {
+      const file = files.get(name);
+      const item = document.createElement("li");
+      item.className = "file";
+      item.toggleAttribute("data-fresh", !!file.fresh);
+      const label = document.createElement("span");
+      label.className = "file-name";
+      label.textContent = name;
+      label.title = name;
+      const size = document.createElement("span");
+      size.className = "file-size";
+      size.textContent = formatSize(file.data.byteLength);
+      item.append(
+        label,
+        size,
+        iconButton("i-download", `Download ${name}`, () => downloadFile(name)),
+        iconButton("i-delete", `Delete ${name}`, () => deleteFile(name))
+      );
+      return item;
+    })
+  );
+  $("#files-empty").hidden = files.size > 0;
+  $("#file-count").textContent = files.size ? String(files.size) : "";
+}
+
+function setFile(name, data, fresh) {
+  files.set(name, { data, fresh });
+  fileDb.put(name, data);
+}
+
+async function addFiles(list) {
+  if (!list.length) return;
+  for (const file of list) {
+    const data = new Uint8Array(await file.arrayBuffer());
+    setFile(file.name, data, false);
+    if (worker) worker.postMessage({ type: "put", name: file.name, data });
+  }
+  renderFiles();
+  showTab("files", true);
+  setPanel(true, true);
+  revealPanel();
+  flash(list.length === 1 ? `Uploaded ${list[0].name}` : `Uploaded ${list.length} files`);
+}
+
+function deleteFile(name) {
+  files.delete(name);
+  fileDb.remove(name);
+  if (worker) worker.postMessage({ type: "remove", name });
+  renderFiles();
+}
+
+function clearFiles() {
+  files.clear();
+  fileDb.clear();
+  if (worker) worker.postMessage({ type: "clear" });
+  tabs.files.removeAttribute("data-new");
+  renderFiles();
+}
+
+function downloadFile(name) {
+  const file = files.get(name);
+  if (!file) return;
+  const url = URL.createObjectURL(new Blob([file.data], { type: "application/octet-stream" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name.split("/").pop();
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// files which a run has written or removed
+function receiveFiles(list, removed) {
+  for (const name of removed) {
+    files.delete(name);
+    fileDb.remove(name);
+  }
+  for (const { name, data } of list) setFile(name, data, true);
+  renderFiles();
+  if (list.length && (tab !== "files" || outPane.hasAttribute("data-collapsed"))) {
+    tabs.files.setAttribute("data-new", "");
+  }
+}
+
+async function loadFiles() {
+  const stored = await Promise.race([fileDb.all(), new Promise((resolve) => setTimeout(resolve, 2000))]);
+  for (const item of stored || []) {
+    if (item && typeof item.name === "string" && item.data) {
+      files.set(item.name, { data: new Uint8Array(item.data), fresh: false });
+    }
+  }
+  renderFiles();
+}
+
+const fileInput = $("#file-input");
+$("#file-add").addEventListener("click", () => fileInput.click());
+$("#file-add-empty").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  addFiles([...fileInput.files]);
+  fileInput.value = "";
+});
+
+// files can be dropped anywhere on the page
+let dragDepth = 0;
+const dragsFiles = (event) => [...((event.dataTransfer && event.dataTransfer.types) || [])].includes("Files");
+window.addEventListener("dragenter", (event) => {
+  if (!dragsFiles(event)) return;
+  event.preventDefault();
+  if (dragDepth++ === 0) {
+    document.body.dataset.drop = "";
+    showTab("files", false);
+    setPanel(true, false);
+  }
+});
+window.addEventListener("dragover", (event) => {
+  if (!dragsFiles(event)) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+});
+window.addEventListener("dragleave", (event) => {
+  if (!dragsFiles(event)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) delete document.body.dataset.drop;
+});
+window.addEventListener("drop", (event) => {
+  if (!dragsFiles(event)) return;
+  event.preventDefault();
+  dragDepth = 0;
+  delete document.body.dataset.drop;
+  addFiles([...event.dataTransfer.files]);
+});
+
+/* header actions */
+runButton.addEventListener("click", () => run());
+$("#reset").addEventListener("click", () => {
+  const question = files.size
+    ? "Replace the script with the FElupe hello world and delete all files?"
+    : "Replace the script with the FElupe hello world?";
+  if ((editor.value !== defaultCode || files.size) && !confirm(question)) return;
+  editor.value = defaultCode;
+  store.set("code", null);
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  clearFiles();
+  if (phase === "running") stop();
+});
+$("#share").addEventListener("click", async () => {
+  const url = `${location.origin}${location.pathname}${location.search}#code=${await pack(editor.value)}`;
+  history.replaceState(null, "", url);
+  try {
+    await navigator.clipboard.writeText(url);
+    flash("Link copied");
+  } catch (error) {
+    flash("Link is in the address bar");
+  }
+});
+window.addEventListener("hashchange", async () => {
+  const code = await codeFromHash();
+  if (code != null && code !== editor.value) {
+    editor.value = code;
+    run();
+  }
+});
+
+/* theme */
+const themeButton = $("#theme");
+function applyTheme(name) {
+  root.dataset.theme = name;
+  const dark = name === "dark";
+  themeButton.querySelector("use").setAttribute("href", dark ? "#i-sun" : "#i-moon");
+  themeButton.title = dark ? "Light theme" : "Dark theme";
+  themeButton.setAttribute("aria-label", themeButton.title);
+  document.querySelector('meta[name="theme-color"]').content = getComputedStyle(root).getPropertyValue("--panel").trim();
+  if (viewer) viewer.setTheme(name);
+}
+themeButton.addEventListener("click", () => {
+  const name = root.dataset.theme === "dark" ? "light" : "dark";
+  store.set("theme", name);
+  applyTheme(name);
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+  if (!store.get("theme")) applyTheme(event.matches ? "dark" : "light");
+});
+applyTheme(root.dataset.theme);
+
+/* viewer buttons */
+$("#edges").addEventListener("click", (event) => {
+  if (!viewer) return;
+  viewer.setEdges(!viewer.edges);
+  event.currentTarget.setAttribute("aria-pressed", String(viewer.edges));
+});
+$("#fit").addEventListener("click", () => viewer && viewer.reset());
+
+/* column splitter (wide screens) */
+const app = $("#app");
+const split = $("#split");
+function setSplit(percent) {
+  const value = Math.min(70, Math.max(25, percent));
+  app.style.setProperty("--split", `${value}%`);
+  store.set("split", value.toFixed(1));
+}
+if (store.get("split")) app.style.setProperty("--split", `${parseFloat(store.get("split"))}%`);
+split.addEventListener("pointerdown", (event) => {
+  split.setPointerCapture(event.pointerId);
+  const move = (e) => {
+    const r = app.getBoundingClientRect();
+    setSplit(((e.clientX - r.left) / r.width) * 100);
+  };
+  const up = () => {
+    split.removeEventListener("pointermove", move);
+    split.removeEventListener("pointerup", up);
+    split.removeEventListener("pointercancel", up);
+  };
+  split.addEventListener("pointermove", move);
+  split.addEventListener("pointerup", up);
+  split.addEventListener("pointercancel", up);
+});
+split.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+  event.preventDefault();
+  const r = app.getBoundingClientRect();
+  const current = ($(".code").getBoundingClientRect().width / r.width) * 100;
+  setSplit(current + (event.key === "ArrowRight" ? 2 : -2));
+});
+
+/* start */
+editor.value = (await codeFromHash()) ?? store.get("code") ?? DEFAULT;
+await loadFiles();
+boot();
+</script>
+</body>
+</html>
