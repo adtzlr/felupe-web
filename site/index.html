@@ -537,7 +537,7 @@ step = fem.Step(items=[solid], ramp=ramp, boundaries=boundaries)
 job = fem.Job(steps=[step])
 job.evaluate()
 
-ax = solid.imshow("Principal Values of Cauchy Stress")
+solid.plot("Principal Values of Cauchy Stress").show()
 </script>
 
 <script type="text/x-python" id="py-bridge">
