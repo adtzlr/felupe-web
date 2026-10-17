@@ -535,7 +535,7 @@ ramp = {boundaries["move"]: move}
 step = fem.Step(items=[solid], ramp=ramp, boundaries=boundaries)
 
 job = fem.Job(steps=[step])
-job.evaluate()
+job.evaluate(tol=1e-2)
 
 solid.plot("Principal Values of Cauchy Stress").show()
 </script>
