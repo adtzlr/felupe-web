@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>FElupe</title>
+<title>FElupe in the browser</title>
 <meta name="description" content="Edit and run FElupe scripts in the browser and view the deformed model in 3D.">
 <meta name="theme-color" content="#fbfcfc">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2319746f'/%3E%3Cpath d='M7 8h17M7 16h19M7 24h21M7 8v16M15.5 8l1 16M24 8l4 16' stroke='%23fff' stroke-width='2.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -380,12 +380,14 @@ body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
 .vtools .spacer { flex: 1; pointer-events: none; }
 .vtools .icon { width: 32px; height: 32px; border: 1px solid var(--rule); background: var(--panel); }
 .vtools .icon:hover { background: var(--hover); }
-.pick { position: relative; min-width: 0; display: block; }
+.pick { position: relative; display: block; flex: 0 1 auto; min-width: 0; }
+#pick { max-width: 280px; }
+#cmap-pick { flex: none; }
 .pick select {
   -webkit-appearance: none;
   appearance: none;
   height: 32px;
-  max-width: min(280px, 58vw);
+  max-width: 100%;
   padding: 0 30px 0 10px;
   border: 1px solid var(--rule);
   border-radius: var(--radius);
@@ -471,6 +473,7 @@ body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
     <canvas id="canvas"></canvas>
     <div class="vtools">
       <label class="pick" id="pick" hidden><select id="quantity" aria-label="Result"></select></label>
+      <label class="pick" id="cmap-pick" hidden><select id="cmap" aria-label="Colormap"><option value="turbo">Turbo</option><option value="viridis">Viridis</option><option value="fast">Fast</option></select></label>
       <span class="spacer"></span>
       <button class="icon" id="edges" type="button" aria-pressed="true" title="Show edges" aria-label="Show edges"><svg class="i"><use href="#i-edges"/></svg></button>
       <button class="icon" id="fit" type="button" title="Reset view" aria-label="Reset view"><svg class="i"><use href="#i-fit"/></svg></button>
@@ -532,9 +535,9 @@ ramp = {boundaries["move"]: move}
 step = fem.Step(items=[solid], ramp=ramp, boundaries=boundaries)
 
 job = fem.Job(steps=[step])
-job.evaluate(tol=1e-2)
+job.evaluate()
 
-solid.plot("Principal Values of Cauchy Stress").show()
+ax = solid.imshow("Principal Values of Cauchy Stress")
 </script>
 
 <script type="text/x-python" id="py-bridge">
@@ -614,11 +617,14 @@ class _Plotter:
         self.select = None
         self.factor = 1.0
         self.undeformed = False
+        self.cmap = None
 
-    def add(self, part, select=None, factor=1.0, undeformed=False):
+    def add(self, part, select=None, factor=1.0, undeformed=False, cmap=None):
         self.parts = [p for p in self.parts if p["mesh"] is not part["mesh"]] + [part]
         if select is not None:
             self.select = select
+        if isinstance(cmap, str):
+            self.cmap = cmap.lower()
         self.factor = float(factor)
         self.undeformed = self.undeformed or bool(undeformed)
         return self
@@ -1139,6 +1145,7 @@ def _show(scene):
         "factor": _finite(scene.factor) or 0.0,
         "undeformed": bool(scene.undeformed),
         "select": select,
+        "cmap": scene.cmap,
     }
     values = np.concatenate(blocks) if blocks else np.zeros(0, dtype=np.float32)
     _send("frame", meta, values)
@@ -1238,7 +1245,7 @@ def _patch():
                 available = ", ".join(repr(key) for key in [*part["point"], *part["cell"]])
                 raise KeyError(f"{name!r} is not available, choose one of {available}.")
         select = None if name is None else {"label": name, "component": component}
-        plotter.add(part, select, factor, show_undeformed)
+        plotter.add(part, select, factor, show_undeformed, kwargs.get("cmap"))
         S.last = ("plot", plotter)
         _emit(plotter, force=True)
         return plotter
@@ -2012,32 +2019,34 @@ function createOutput(box) {
 
 // Viewer
 
-const VIRIDIS = [
-  [0.2777273272234177, 0.005407344544966578, 0.3340998053353061],
-  [0.1050930431085774, 1.404613529898575, 1.384590162594685],
-  [-0.3308618287255563, 0.214847559468213, 0.09509516302823659],
-  [-4.634230498983486, -5.799100973351585, -19.33244095627987],
-  [6.228269936347081, 14.17993336680509, 56.69055260068105],
-  [4.776384997670288, -13.74514537774601, -65.35303263337234],
-  [-5.435455855934631, 4.645852612178535, 26.3124352495832],
-];
-const LUT_SRGB = new Float32Array(256 * 3);
-const LUT_LINEAR = new Float32Array(256 * 3);
-for (let i = 0; i < 256; i++) {
-  const t = i / 255;
-  for (let k = 0; k < 3; k++) {
-    let c = 0;
-    for (let p = 6; p >= 0; p--) c = c * t + VIRIDIS[p][k];
-    c = Math.min(1, Math.max(0, c));
-    LUT_SRGB[3 * i + k] = c;
-    LUT_LINEAR[3 * i + k] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+// 256 colors (sRGB, 8 bit): turbo and viridis of matplotlib, Fast of ParaView
+// (F. Samsel, W. A. Scott, K. Moreland)
+const COLORMAPS = {
+  turbo: "30123b32154333184a341b51351e5836215f37246638276d392a733a2d793b2f803c32863d358b3e38913f3b973f3e9c4040a24143a74146ac4249b1424bb5434eba4451bf4454c34456c74559cb455ccf455ed34661d64664da4666dd4669e0466be3476ee64771e94773eb4776ee4778f0477bf2467df44680f64682f84685fa4687fb458afc458cfd448ffe4391fe4294ff4196ff4099ff3e9bfe3d9efe3ba0fd3aa3fc38a5fb37a8fa35abf833adf731aff52fb2f42eb4f22cb7f02ab9ee28bceb27bee925c0e723c3e422c5e220c7df1fc9dd1ecbda1ccdd81bd0d51ad2d21ad4d019d5cd18d7ca18d9c818dbc518ddc218dec018e0bd19e2bb19e3b91ae4b61ce6b41de7b21fe9af20eaac22ebaa25eca727eea42aefa12cf09e2ff19b32f29835f39438f4913cf58e3ff68a43f78746f8844af8804ef97d52fa7a55fa7659fb735dfc6f61fc6c65fd6969fd666dfe6271fe5f75fe5c79fe597dff5680ff5384ff5188ff4e8bff4b8fff4992ff4796fe4499fe429cfe409ffd3fa1fd3da4fc3ca7fc3aa9fb39acfb38affa37b1f936b4f836b7f735b9f635bcf534bef434c1f334c3f134c6f034c8ef34cbed34cdec34d0ea34d2e935d4e735d7e535d9e436dbe236dde037dfdf37e1dd37e3db38e5d938e7d739e9d539ebd339ecd13aeecf3aefcd3af1cb3af2c93af4c73af5c53af6c33af7c13af8be39f9bc39faba39fbb838fbb637fcb336fcb136fdae35fdac34fea933fea732fea431fea130fe9e2ffe9b2dfe992cfe962bfe932afe9029fd8d27fd8a26fc8725fc8423fb8122fb7e21fa7b1ff9781ef9751df8721cf76f1af66c19f56918f46617f36315f26014f15d13f05b12ef5811ed5510ec530feb500eea4e0de84b0ce7490ce5470be4450ae2430ae14109df3f08dd3d08dc3b07da3907d83706d63506d43305d23105d02f05ce2d04cc2b04ca2a04c82803c52603c32503c12302be2102bc2002b91e02b71d02b41b01b21a01af1801ac1701a91601a71401a41301a112019e10019b0f01980e01950d01920b018e0a018b09028808028507028106027e05027a0403",
+  viridis: "44015444025645045745055946075a46085c460a5d460b5e470d60470e6147106347116447136548146748166848176948186a481a6c481b6d481c6e481d6f481f70482071482173482374482475482576482677482878482979472a7a472c7a472d7b472e7c472f7d46307e46327e46337f463480453581453781453882443983443a83443b84433d84433e85423f854240864241864142874144874045884046883f47883f48893e49893e4a893e4c8a3d4d8a3d4e8a3c4f8a3c508b3b518b3b528b3a538b3a548c39558c39568c38588c38598c375a8c375b8d365c8d365d8d355e8d355f8d34608d34618d33628d33638d32648e32658e31668e31678e31688e30698e306a8e2f6b8e2f6c8e2e6d8e2e6e8e2e6f8e2d708e2d718e2c718e2c728e2c738e2b748e2b758e2a768e2a778e2a788e29798e297a8e297b8e287c8e287d8e277e8e277f8e27808e26818e26828e26828e25838e25848e25858e24868e24878e23888e23898e238a8d228b8d228c8d228d8d218e8d218f8d21908d21918c20928c20928c20938c1f948c1f958b1f968b1f978b1f988b1f998a1f9a8a1e9b8a1e9c891e9d891f9e891f9f881fa0881fa1881fa1871fa28720a38620a48621a58521a68522a78522a88423a98324aa8325ab8225ac8226ad8127ad8128ae8029af7f2ab07f2cb17e2db27d2eb37c2fb47c31b57b32b67a34b67935b77937b87838b9773aba763bbb753dbc743fbc7340bd7242be7144bf7046c06f48c16e4ac16d4cc26c4ec36b50c46a52c56954c56856c66758c7655ac8645cc8635ec96260ca6063cb5f65cb5e67cc5c69cd5b6ccd5a6ece5870cf5773d05675d05477d1537ad1517cd2507fd34e81d34d84d44b86d54989d5488bd6468ed64590d74393d74195d84098d83e9bd93c9dd93ba0da39a2da37a5db36a8db34aadc32addc30b0dd2fb2dd2db5de2bb8de29bade28bddf26c0df25c2df23c5e021c8e020cae11fcde11dd0e11cd2e21bd5e21ad8e219dae319dde318dfe318e2e418e5e419e7e419eae51aece51befe51cf1e51df4e61ef6e620f8e621fbe723fde725",
+  fast: "0e0e7810117a12147c14177e16197f171b81191e831a20851c23871d25891f278b202a8d212c8f222e91243193253395263597273799283a9b293c9d2a3e9f2b40a12c43a32d45a52e47a72f4aa9304cab314ead3251af3353b13455b33457b5355ab7365cb9375ebb3861bd3863bf3965c13a68c33b6ac53b6cc73c6fc93d71cb3d74cd3e76cf3f78d0417ad1427cd2437fd34481d54583d64685d74787d8488ad9498cda4a8edb4b90dd4c93de4d95df4e97e04f99e14f9be2509ee351a0e452a2e653a5e754a7e854a9e955abea56aeeb57b0ec57b2ee58b4ef59b7f05ab9f15abbf25bbef35ebff361c1f365c2f368c3f26bc5f26ec6f270c7f273c9f176caf179cbf17bcdf17ecef080cff083d1f085d2f088d4ef8ad5ef8dd6ef8fd8ef91d9ee94dbee96dcee98dded9adfed9ce0ed9fe2eda1e3eca3e4eca5e6eca7e7eba9e9ebabeaebadebeaafedeab2ede8b6eee6baeee4bdeee2c0eee0c4eeddc7efdbcaefd9cdefd7d0efd5d3efd2d6f0d0d9f0cedcf0ccdff0cae1f1c7e4f1c5e6f0c3e7efc0e8eebde9ecbae9ebb7eaeab4ebe9b1ece7aeece6abede5a8eee4a5eee2a2efe19ff0e09cf0df99f1dd96f1dc94f2db91f2da8ef3d88bf3d788f4d685f4d582f4d380f4d17ef4cf7df4cd7bf3cc79f3ca78f3c876f3c674f3c473f2c371f2c170f2bf6ef2bd6cf2bb6bf1ba69f1b867f1b666f0b464f0b262f0b161f0af5fefad5eefab5cefa95aeea859eea657eea455eda254eda052ed9f51ec9d4feb9b4eea994de9974ce8954be8934ae79249e69047e58e46e48c45e38a44e28843e18642e18441e08340df813fde7f3ddd7d3cdc7b3bdb793ada7739d97538d87337d77236d77035d66e34d56c33d46a31d36830d2662fd1642ed0622dcf602cce5e2bcd5c2acc5a29cb5829c95728c85528c75428c55228c45127c24f27c14d27c04c27be4a26bd4926bc4726ba4526b94425b74225b64025b53f25b33d24b23b24b13a24af3823ae3623ac3523ab3323aa3122a82f22a72d22a62c22a42a21a32821a12621a024209f22209d20209c1d209b1b1f99191f98161f96141e",
+};
+const DEFAULT_COLORMAP = "turbo";
+const colormaps = {};
+function colormap(name) {
+  if (!COLORMAPS[name]) name = DEFAULT_COLORMAP;
+  if (!colormaps[name]) {
+    const hex = COLORMAPS[name];
+    const srgb = new Uint8Array(768);
+    const linear = new Float32Array(768);
+    for (let i = 0; i < 768; i++) {
+      srgb[i] = parseInt(hex.substr(2 * i, 2), 16);
+      const c = srgb[i] / 255;
+      linear[i] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    }
+    const stops = Array.from({ length: 33 }, (_, i) => {
+      const j = 3 * Math.min(255, i * 8);
+      return `rgb(${srgb[j]} ${srgb[j + 1]} ${srgb[j + 2]}) ${((i / 32) * 100).toFixed(1)}%`;
+    });
+    colormaps[name] = { name, linear, gradient: `linear-gradient(90deg, ${stops.join(", ")})` };
   }
+  return colormaps[name];
 }
-$("#cbar").style.background = `linear-gradient(90deg, ${Array.from({ length: 11 }, (_, i) => {
-  const j = Math.round((i / 10) * 255) * 3;
-  const rgb = [0, 1, 2].map((k) => Math.round(LUT_SRGB[j + k] * 255)).join(" ");
-  return `rgb(${rgb}) ${i * 10}%`;
-}).join(", ")})`;
 
 function formatValue(value, scale) {
   if (!Number.isFinite(value)) return String(value);
@@ -2094,6 +2103,10 @@ async function createViewer(host) {
   let options = [];
   let choice = store.get("quantity");
   let showEdges = store.get("edges") !== "0";
+  let cmap = colormap(store.get("cmap"));
+  const cmapPick = host.querySelector("#cmap-pick");
+  const cmapSelect = host.querySelector("#cmap");
+  const colorbar = host.querySelector("#cbar");
   const box = new THREE.Box3();
 
   function setUp(z) {
@@ -2240,7 +2253,7 @@ async function createViewer(host) {
       else if (!list.some((o) => o.key === choice)) choice = list.length ? list[0].key : null;
     }
     select.value = choice || "";
-    pick.hidden = !list.length;
+    pick.hidden = cmapPick.hidden = !list.length;
   }
 
   function setFrame(meta, [values]) {
@@ -2253,6 +2266,7 @@ async function createViewer(host) {
     });
     frame = { quantities, values, factor: meta.factor ?? 1, undeformed: !!meta.undeformed };
     buildOptions(quantities, meta.select);
+    useColormap(COLORMAPS[meta.cmap] ? meta.cmap : store.get("cmap"));
     apply();
   }
 
@@ -2323,9 +2337,9 @@ async function createViewer(host) {
         }
         const t = range > 0 ? Math.min(1, Math.max(0, (value - min) / range)) : 0.5;
         const l = 3 * Math.round(t * 255);
-        C[j] = LUT_LINEAR[l];
-        C[j + 1] = LUT_LINEAR[l + 1];
-        C[j + 2] = LUT_LINEAR[l + 2];
+        C[j] = cmap.linear[l];
+        C[j + 1] = cmap.linear[l + 1];
+        C[j + 2] = cmap.linear[l + 2];
       };
       if (q.where === "point") {
         const C = pointColor.array;
@@ -2370,7 +2384,7 @@ async function createViewer(host) {
     clearModel();
     options = [];
     legend.hidden = true;
-    pick.hidden = true;
+    pick.hidden = cmapPick.hidden = true;
     const hint = host.querySelector("#hint");
     hint.textContent = message || "";
     hint.hidden = !message;
@@ -2404,6 +2418,18 @@ async function createViewer(host) {
   select.addEventListener("change", () => {
     choice = select.value;
     store.set("quantity", choice);
+    apply();
+  });
+
+  function useColormap(name) {
+    cmap = colormap(name);
+    cmapSelect.value = cmap.name;
+    colorbar.style.background = cmap.gradient;
+  }
+  useColormap(cmap.name);
+  cmapSelect.addEventListener("change", () => {
+    store.set("cmap", cmapSelect.value === DEFAULT_COLORMAP ? null : cmapSelect.value);
+    useColormap(cmapSelect.value);
     apply();
   });
   canvas.addEventListener("dblclick", reset);
