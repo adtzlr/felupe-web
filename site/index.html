@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>FElupe in the browser</title>
+<title>FElupe Web</title>
 <meta name="description" content="Edit and run FElupe scripts in the browser and view the deformed model in 3D.">
 <meta name="theme-color" content="#fbfcfc">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2319746f'/%3E%3Cpath d='M7 8h17M7 16h19M7 24h21M7 8v16M15.5 8l1 16M24 8l4 16' stroke='%23fff' stroke-width='2.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -181,27 +181,6 @@ svg.i { width: 18px; height: 18px; flex: none; }
 .code { background: var(--panel); border-bottom: 1px solid var(--rule); }
 .out { background: var(--panel); padding-bottom: env(safe-area-inset-bottom); }
 .split { display: none; }
-
-@media (min-width: 860px) {
-  body { overflow: hidden; }
-  .app {
-    display: grid;
-    height: calc(100dvh - var(--bar) - env(safe-area-inset-top));
-    grid-template-columns: var(--split, 44%) 1px minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
-    grid-template-areas: "code split view" "out split view";
-  }
-  .view { grid-area: view; height: auto; min-height: 0; border: 0; }
-  .code { grid-area: code; min-height: 0; display: flex; flex-direction: column; border: 0; }
-  .out { grid-area: out; border-top: 1px solid var(--rule); }
-  .split { display: block; grid-area: split; position: relative; z-index: 5; background: var(--rule); cursor: col-resize; touch-action: none; }
-  .split::before { content: ""; position: absolute; inset: 0 -5px; }
-  .split:focus-visible { outline-offset: 0; }
-  .editor { flex: 1; min-height: 0; }
-  .ed-scroll { height: 100%; overflow: auto; }
-  .ed-inner { min-height: 100%; }
-  .out-body, .files { height: min(30vh, 300px); max-height: none; }
-}
 
 /* editor */
 .editor { position: relative; font: var(--code-size)/var(--code-line) var(--mono); font-variant-ligatures: none; tab-size: 4; }
@@ -424,6 +403,39 @@ body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
 .triad text { font: 600 10px var(--ui); }
 .hint { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; color: var(--muted); text-align: center; text-wrap: balance; pointer-events: none; }
 
+/* desktop layout: placed after the component styles, so it overrides them */
+@media (min-width: 860px) {
+  body { overflow: hidden; }
+  .app {
+    display: grid;
+    height: calc(100dvh - var(--bar) - env(safe-area-inset-top));
+    grid-template-columns: var(--split, 44%) 1px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 1px clamp(96px, var(--split-out, calc(38px + min(30vh, 300px))), calc(100% - 121px));
+    grid-template-areas: "code split view" "split-out split view" "out split view";
+  }
+  .app:has(> .out[data-collapsed]) { grid-template-rows: minmax(0, 1fr) 1px auto; }
+  .view { grid-area: view; height: auto; min-height: 0; border: 0; }
+  .code { grid-area: code; min-height: 0; display: flex; flex-direction: column; border: 0; }
+  .out { grid-area: out; min-height: 0; display: flex; flex-direction: column; }
+  .out-head { flex: none; }
+  .out-body, .files { flex: 1; min-height: 0; max-height: none; }
+  .editor { flex: 1; min-height: 0; }
+  .ed-scroll { height: 100%; overflow: auto; overscroll-behavior: contain; }
+  .ed-inner { min-height: 100%; }
+
+  /* splitters: 1px rules with a wider grip, kept off the scrollbars of the editor */
+  .split { display: block; position: relative; z-index: 5; background: var(--rule); touch-action: none; }
+  .split::before { content: ""; position: absolute; }
+  .split:focus-visible { outline-offset: 0; }
+  .split-col { grid-area: split; cursor: col-resize; }
+  .split-col::before { inset: 0 -6px 0 -2px; }
+  .split-row { grid-area: split-out; cursor: row-resize; }
+  .split-row::before { inset: -2px 0 -5px; }
+  body[data-resizing] { -webkit-user-select: none; user-select: none; }
+  body[data-resizing="col"], body[data-resizing="col"] * { cursor: col-resize !important; }
+  body[data-resizing="row"], body[data-resizing="row"] * { cursor: row-resize !important; }
+}
+
 @media (max-width: 420px) {
   .bar { gap: 0; padding-left: max(12px, env(safe-area-inset-left)); }
   .brand { margin-right: 8px; }
@@ -482,7 +494,7 @@ body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
     <div class="legend" id="legend" hidden><div class="cbar" id="cbar"></div><div class="ticks"><span id="vmin"></span><span id="vmax"></span></div></div>
     <div class="hint" id="hint">Press Run to execute the script. The model will appear here.</div>
   </section>
-  <div class="split" id="split" role="separator" aria-orientation="vertical" aria-label="Resize panels" tabindex="0"></div>
+  <div class="split split-col" id="split" role="separator" aria-orientation="vertical" aria-label="Resize script and model" tabindex="0"></div>
   <section class="code" aria-label="Script">
     <div class="editor" id="editor">
       <div class="ed-scroll">
@@ -497,6 +509,7 @@ body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
       </div>
     </div>
   </section>
+  <div class="split split-row" id="split-out" role="separator" aria-orientation="horizontal" aria-label="Resize script and output" tabindex="0"></div>
   <section class="out" id="out" aria-label="Output and files">
     <div class="out-head">
       <button class="out-toggle" id="out-toggle" type="button" aria-expanded="true" aria-label="Collapse panel"><svg><use href="#i-chev"/></svg></button>
@@ -1765,9 +1778,11 @@ function createEditor(host, { onRun, onChange }) {
   const code = host.querySelector(".ed-hl");
   const gutter = host.querySelector(".ed-gutter");
   const errorBar = host.querySelector(".ed-err");
+  const scroller = host.querySelector(".ed-scroll");
   let lineCount = -1;
   let errorLine = null;
   let frame = 0;
+  let follow = false; // keep the caret in view after an edit
 
   function render() {
     frame = 0;
@@ -1779,6 +1794,18 @@ function createEditor(host, { onRun, onChange }) {
       lineCount = n;
       renderGutter();
     }
+    // the highlighted code sets the height of the editor, so the caret is revealed here
+    if (follow) {
+      follow = false;
+      if (document.activeElement === input) reveal(caretLine(), false);
+    }
+  }
+  function caretLine() {
+    const v = input.value;
+    const pos = input.selectionDirection === "backward" ? input.selectionStart : input.selectionEnd;
+    let line = 1;
+    for (let i = v.indexOf("\n"); i >= 0 && i < pos; i = v.indexOf("\n", i + 1)) line++;
+    return line;
   }
   function renderGutter() {
     let html = "";
@@ -1795,6 +1822,20 @@ function createEditor(host, { onRun, onChange }) {
     errorBar.hidden = !errorLine;
     if (errorLine) errorBar.style.setProperty("--line", errorLine - 1);
     renderGutter();
+    if (errorLine) requestAnimationFrame(() => reveal(line, true));
+  }
+  // scroll a line into view (centered or nearest), if the editor scrolls by itself (wide screens)
+  function reveal(line, center) {
+    const room = scroller.clientHeight;
+    if (scroller.scrollHeight <= room) return;
+    const style = getComputedStyle(code);
+    const pad = parseFloat(style.paddingTop) || 0;
+    const height = parseFloat(style.lineHeight) || 20;
+    const top = pad + (line - 1) * height;
+    if (top >= scroller.scrollTop && top + height <= scroller.scrollTop + room) return;
+    if (center) scroller.scrollTop = Math.max(0, top - room / 3);
+    else if (top < scroller.scrollTop) scroller.scrollTop = top - pad;
+    else scroller.scrollTop = top + height + pad - room;
   }
 
   function replace(start, end, text, selStart = start + text.length, selEnd = selStart) {
@@ -1890,6 +1931,7 @@ function createEditor(host, { onRun, onChange }) {
   });
   input.addEventListener("input", () => {
     if (errorLine) mark(null);
+    follow = true;
     schedule();
     onChange(input.value);
   });
@@ -2997,36 +3039,104 @@ $("#edges").addEventListener("click", (event) => {
 });
 $("#fit").addEventListener("click", () => viewer && viewer.reset());
 
-/* column splitter (wide screens) */
+/* splitters (wide screens): script | model and script / output */
 const app = $("#app");
 const split = $("#split");
+const splitOut = $("#split-out");
+const OUT_MIN = 96; // limits of the output panel and the script, as in the CSS
+const CODE_MIN = 120;
+
+function restoreSplit(key) {
+  const value = parseFloat(store.get(key));
+  if (Number.isFinite(value)) app.style.setProperty(`--${key}`, `${value}%`);
+}
+restoreSplit("split");
+restoreSplit("split-out");
+
+// pointer drags of a splitter; text is not selected meanwhile
+function draggable(handle, axis, start) {
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    handle.setPointerCapture(event.pointerId);
+    document.body.dataset.resizing = axis;
+    const { move, end } = start(event);
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.removeEventListener("pointercancel", up);
+      delete document.body.dataset.resizing;
+      if (end) end();
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+    handle.addEventListener("pointercancel", up);
+  });
+}
+
 function setSplit(percent) {
   const value = Math.min(70, Math.max(25, percent));
   app.style.setProperty("--split", `${value}%`);
   store.set("split", value.toFixed(1));
 }
-if (store.get("split")) app.style.setProperty("--split", `${parseFloat(store.get("split"))}%`);
-split.addEventListener("pointerdown", (event) => {
-  split.setPointerCapture(event.pointerId);
-  const move = (e) => {
+draggable(split, "col", () => ({
+  move(e) {
     const r = app.getBoundingClientRect();
     setSplit(((e.clientX - r.left) / r.width) * 100);
-  };
-  const up = () => {
-    split.removeEventListener("pointermove", move);
-    split.removeEventListener("pointerup", up);
-    split.removeEventListener("pointercancel", up);
-  };
-  split.addEventListener("pointermove", move);
-  split.addEventListener("pointerup", up);
-  split.addEventListener("pointercancel", up);
-});
+  },
+}));
 split.addEventListener("keydown", (event) => {
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
   event.preventDefault();
   const r = app.getBoundingClientRect();
   const current = ($(".code").getBoundingClientRect().width / r.width) * 100;
   setSplit(current + (event.key === "ArrowRight" ? 2 : -2));
+});
+
+// the height of the output panel, in percent of the app (the script takes the rest)
+const outSize = () => outPane.getBoundingClientRect().height;
+function setOutSplit(size) {
+  const height = app.getBoundingClientRect().height;
+  if (!height) return;
+  const value = (Math.min(Math.max(size, OUT_MIN), Math.max(OUT_MIN, height - CODE_MIN - 1)) / height) * 100;
+  app.style.setProperty("--split-out", `${value}%`);
+  store.set("split-out", value.toFixed(1));
+}
+draggable(splitOut, "row", (event) => {
+  const grab = event.clientY - splitOut.getBoundingClientRect().top;
+  const snap = $(".out-head").offsetHeight + 24;
+  const before = app.style.getPropertyValue("--split-out");
+  return {
+    move(e) {
+      const size = app.getBoundingClientRect().bottom - (e.clientY - grab) - 1;
+      const collapsed = outPane.hasAttribute("data-collapsed");
+      // dragged down onto the header, the panel collapses; dragged up again, it opens
+      if (size < snap) {
+        if (!collapsed) setPanel(false, true);
+      } else {
+        if (collapsed) setPanel(true, true);
+        setOutSplit(size);
+      }
+    },
+    end() {
+      if (!outPane.hasAttribute("data-collapsed")) return;
+      // a collapsed panel opens again with its size from before the drag
+      if (before) app.style.setProperty("--split-out", before);
+      else app.style.removeProperty("--split-out");
+      store.set("split-out", before ? parseFloat(before).toFixed(1) : null);
+    },
+  };
+});
+splitOut.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+  event.preventDefault();
+  const up = event.key === "ArrowUp";
+  if (outPane.hasAttribute("data-collapsed")) {
+    if (up) setPanel(true, true);
+  } else if (!up && outSize() <= OUT_MIN + 0.5) {
+    setPanel(false, true);
+  } else {
+    setOutSplit(outSize() + (up ? 0.02 : -0.02) * app.getBoundingClientRect().height);
+  }
 });
 
 /* start */
