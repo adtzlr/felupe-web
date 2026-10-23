@@ -8,6 +8,8 @@
 ## Pyodide
 A simple static web-app which runs directly in the browser. It contains a code editor, an interactive model view, an output panel and a file browser (co-authored by Claude Code Opus 5.5).
 
+Plots are shown in the model view by `plot().show()`, like in a notebook, e.g. `solid.plot("Displacement").show()`. The model view is the WebGL viewer of the plotting backend `"webgl"` of FElupe, which is loaded from the installed FElupe (FElupe 12 or newer, without further downloads). Figures of matplotlib are shown in the output. A version of FElupe is selected by `?felupe=<version>` and a wheel by `?felupe=<url of the wheel>`.
+
 ## JupyterLite
 Due to limitations using JupyterLite / Pyodide, the `parallel`-evaluation mode of a `Job` is not available. The computation is performed on the client side. Hence, the computation performance depends on the client. Python is running in 32bit mode. Visualizing the simulation model is not possible, i.e. `felupe.View` is not available in JupyterLite.
 
