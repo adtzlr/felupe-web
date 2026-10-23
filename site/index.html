@@ -352,56 +352,16 @@ svg.i { width: 18px; height: 18px; flex: none; }
 .text-button svg { width: 16px; height: 16px; }
 body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
 
-/* viewer */
-.view canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
-.vtools { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; align-items: center; gap: 6px; pointer-events: none; }
+/* viewer: the WebGL viewer of FElupe (class fv), its overlays follow the theme */
+.model { position: absolute; inset: 0; }
+.view .fv { color: var(--ink); font-family: var(--ui); --fv-panel: var(--panel); --fv-rule: var(--rule); }
+/* the tools are placed at the upper left (the legend of the viewer is at the upper right) */
+.vtools { position: absolute; top: 8px; left: 8px; display: flex; align-items: center; gap: 6px; pointer-events: none; }
 .vtools > * { pointer-events: auto; }
-.vtools .spacer { flex: 1; pointer-events: none; }
 .vtools .icon { width: 32px; height: 32px; border: 1px solid var(--rule); background: var(--panel); }
 .vtools .icon:hover { background: var(--hover); }
-.pick { position: relative; display: block; flex: 0 1 auto; min-width: 0; }
-#pick { max-width: 280px; }
-#cmap-pick { flex: none; }
-.pick select {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 32px;
-  max-width: 100%;
-  padding: 0 30px 0 10px;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--ink);
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-.pick::after {
-  content: "";
-  position: absolute;
-  top: 11px;
-  right: 12px;
-  width: 6px;
-  height: 6px;
-  border-right: 1.5px solid var(--muted);
-  border-bottom: 1.5px solid var(--muted);
-  transform: rotate(45deg);
-  pointer-events: none;
-}
-.legend {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  width: min(190px, 46%);
-  color: var(--muted);
-  font: 11px/1.3 var(--ui);
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
-}
-.legend .cbar { height: 8px; border-radius: 2px; }
-.legend .ticks { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; }
-.triad { position: absolute; left: 6px; bottom: 4px; width: 64px; height: 64px; pointer-events: none; overflow: visible; }
-.triad text { font: 600 10px var(--ui); }
 .hint { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; color: var(--muted); text-align: center; text-wrap: balance; pointer-events: none; }
+.hint code { font: 12px var(--mono); }
 
 /* desktop layout: placed after the component styles, so it overrides them */
 @media (min-width: 860px) {
@@ -444,14 +404,6 @@ body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
   .run { margin-left: 4px; padding: 0 11px 0 9px; }
 }
 </style>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
-  }
-}
-</script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -461,7 +413,6 @@ body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
   <symbol id="i-link" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a4.5 4.5 0 0 0 6.8.5l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.6 1.6"/><path d="M14 10.5a4.5 4.5 0 0 0-6.8-.5l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></g></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.6A8.3 8.3 0 0 1 9.4 4a8.3 8.3 0 1 0 10.6 10.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g></symbol>
-  <symbol id="i-edges" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5l16-1v16l-16 1z"/><path d="M4 10.4l16-.7M4 15.7l16-.3M9.3 4.7v16M14.7 4.4v16"/></g></symbol>
   <symbol id="i-fit" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5h4M16 4h4v4M20 15v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="2.5"/></g></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-upload" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M4.5 14v4.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V14"/></g></symbol>
@@ -482,17 +433,11 @@ body[data-drop] .out { box-shadow: inset 0 0 0 2px var(--accent); }
 
 <main class="app" id="app">
   <section class="view" id="view" aria-label="Model">
-    <canvas id="canvas"></canvas>
+    <div class="model" id="model"></div>
     <div class="vtools">
-      <label class="pick" id="pick" hidden><select id="quantity" aria-label="Result"></select></label>
-      <label class="pick" id="cmap-pick" hidden><select id="cmap" aria-label="Colormap"><option value="turbo">Turbo</option><option value="viridis">Viridis</option><option value="fast">Fast</option></select></label>
-      <span class="spacer"></span>
-      <button class="icon" id="edges" type="button" aria-pressed="true" title="Show edges" aria-label="Show edges"><svg class="i"><use href="#i-edges"/></svg></button>
-      <button class="icon" id="fit" type="button" title="Reset view" aria-label="Reset view"><svg class="i"><use href="#i-fit"/></svg></button>
+      <button class="icon" id="fit" type="button" title="Reset view" aria-label="Reset view" hidden><svg class="i"><use href="#i-fit"/></svg></button>
     </div>
-    <svg class="triad" id="triad" viewBox="0 0 64 64" aria-hidden="true"></svg>
-    <div class="legend" id="legend" hidden><div class="cbar" id="cbar"></div><div class="ticks"><span id="vmin"></span><span id="vmax"></span></div></div>
-    <div class="hint" id="hint">Press Run to execute the script. The model will appear here.</div>
+    <div class="hint" id="hint">Press Run to execute the script. A plot is shown here by <code>plot().show()</code>.</div>
   </section>
   <div class="split split-col" id="split" role="separator" aria-orientation="vertical" aria-label="Resize script and model" tabindex="0"></div>
   <section class="code" aria-label="Script">
@@ -556,24 +501,23 @@ solid.plot("Principal Values of Cauchy Stress").show()
 <script type="text/x-python" id="py-bridge">
 """Bridge between FElupe in Pyodide (web worker) and the page.
 
-The plot-methods of FElupe (``plot()``, ``screenshot()``, ``imshow()``) keep using
-FElupe's own views for the point- and cell-data, only the pyvista-plotter is replaced
-by the 3D view of the page. Converged results of ``newtonraphson()`` are shown live.
+The plots of FElupe are drawn by the WebGL viewer of FElupe (``viewer.js`` of the
+plotting backend "webgl", loaded from the installed package by the page). The bridge
+registers the plotting backend "web", whose plotter is shown in the 3D view by
+``show()``, like a plotter in a notebook, e.g. ``solid.plot("Displacement").show()``.
+Figures of matplotlib are shown in the output. The 3D view requires FElupe 12 or newer.
 """
 
 import contextlib
-import functools
-import importlib.machinery
 import importlib.util
 import io
 import json
 import linecache
-import math
 import os
+import re
 import sys
 import time
 import traceback
-import types
 import warnings
 
 os.environ["MPLBACKEND"] = "Agg"
@@ -601,63 +545,8 @@ except (ImportError, AttributeError):
 SCRIPT = "<script>"
 
 
-class _Null:
-    "Stand-in for matplotlib axes and other results of FElupe's plot-methods."
-
-    def __getattr__(self, name):
-        if name.startswith("__"):
-            raise AttributeError(name)
-        return self
-
-    def __call__(self, *args, **kwargs):
-        return self
-
-    def __iter__(self):
-        return iter(())
-
-    def __repr__(self):
-        return "<shown in the 3D view>"
-
-
-_NULL = _Null()
-
-
-class _Plotter:
-    "Stand-in for a pyvista-plotter which collects the plotted parts of a scene."
-
-    def __init__(self, parts=None):
-        self.parts = list(parts or [])
-        self.select = None
-        self.factor = 1.0
-        self.undeformed = False
-        self.cmap = None
-
-    def add(self, part, select=None, factor=1.0, undeformed=False, cmap=None):
-        self.parts = [p for p in self.parts if p["mesh"] is not part["mesh"]] + [part]
-        if select is not None:
-            self.select = select
-        if isinstance(cmap, str):
-            self.cmap = cmap.lower()
-        self.factor = float(factor)
-        self.undeformed = self.undeformed or bool(undeformed)
-        return self
-
-    def __getattr__(self, name):  # show(), add_points(), screenshot(), ...
-        if name.startswith("__"):
-            raise AttributeError(name)
-        return lambda *args, **kwargs: self
-
-    def __repr__(self):
-        return "<shown in the 3D view>"
-
-
 class _State:
-    last = None  # ("solve", items or unknowns) or ("plot", plotter)
-    shown = 0.0
-    interval = 0.1
-    topo = None
-    topo_key = None
-    topo_id = 0
+    shown = False  # a plot was shown in the 3D view by the script
 
 
 S = _State()
@@ -668,686 +557,66 @@ def _send(kind, meta=None, *arrays):
         _post(kind, json.dumps(meta or {}), *arrays)
 
 
-# Parts of a scene: meshes with point- and cell-data
-
-
-def _is_field(obj):
-    return (
-        not isinstance(obj, np.ndarray)
-        and hasattr(obj, "values")
-        and hasattr(obj, "region")
-        and hasattr(obj, "dim")
-    )
-
-
-def _is_solid(obj):
-    return hasattr(obj, "umat") and isinstance(getattr(obj, "field", None), fem.FieldContainer)
-
-
-def _is_vector(container):
-    return container.fields[0].dim == container.region.mesh.dim
-
-
-def _part(mesh, point_data=None, cell_data=None):
-    "A mesh with point- and cell-data, as given to (or created by) FElupe's views."
-    points = np.asarray(mesh.points)
-    pdim = points.shape[1] if points.ndim == 2 else 1
-    part = {"mesh": mesh, "point": {}, "cell": {}, "alias": {}}
-    sizes = {"point": len(points), "cell": len(mesh.cells)}
-    for where, data in (("point", point_data), ("cell", cell_data)):
-        for label, values in (data or {}).items():
-            try:
-                values = np.asarray(values, dtype=float)
-            except (TypeError, ValueError):
-                continue
-            if values.ndim == 0 or len(values) != sizes[where]:
-                continue
-            values = values.reshape(len(values), -1)
-            if label == "Displacement":
-                values = values[:, :pdim]  # displacements are padded to 3d
-            if "Principal Values of " in label:
-                values = -np.sort(-values, axis=1)  # descending, as FElupe does
-            part[where][label] = values
-    point = part["point"]
-    if "Displacement" in point:
-        if np.array_equal(point.get("Field"), point["Displacement"]):
-            del point["Field"]
-            part["alias"]["Field"] = "Displacement"
-        part["point"] = {"Displacement": point.pop("Displacement"), **point}
-    return part
-
-
-def _light(container):
-    "A part with the values of the first field, as shown during the solution."
-    label = "Displacement" if _is_vector(container) else "Field"
-    return _part(container.region.mesh, {label: container.fields[0].values})
-
-
-def _full(obj):
-    "A part with all point- and cell-data of FElupe's view of a solid or field."
-    try:
-        if _is_solid(obj):
-            if _is_vector(obj.field):
-                return obj.view()._web
-            obj = obj.field
-        return obj.view()._web
-    except Exception:
-        return None
-
-
-def _usable(parts):
-    "Keep the parts with cells which can be drawn."
-    parts = [
-        part
-        for part in parts
-        if part is not None
-        and _templates(str(part["mesh"].cell_type), np.shape(part["mesh"].cells)[-1])[0]
-        is not None
-    ]
-    return parts or None
-
-
-def _parts(obj, full=False, depth=0):
-    "The parts of a displayable object (or None)."
-    if obj is None or obj is _NULL or depth > 3:
-        return None
-    if isinstance(obj, (types.ModuleType, type, np.ndarray, str, dict)):
-        return None
-    if isinstance(obj, _Plotter):
-        return obj.parts or None
-    if isinstance(obj, (list, tuple)):
-        parts = []
-        for item in obj:
-            for part in _parts(item, full, depth + 1) or []:
-                if not any(p["mesh"] is part["mesh"] for p in parts):
-                    parts.append(part)
-        return parts or None
-    if _is_solid(obj) or isinstance(obj, fem.FieldContainer):
-        container = obj.field if _is_solid(obj) else obj
-        return _usable([(_full(obj) if full else None) or _light(container)])
-    if _is_field(obj):
-        return _parts(fem.FieldContainer([obj]), full, depth + 1)
-    if isinstance(obj, fem.MeshContainer):
-        return _usable([_part(mesh) for mesh in obj.meshes])
-    if isinstance(obj, fem.Mesh):
-        return _usable([_part(obj)])
-    if isinstance(obj, fem.Region):
-        return _parts(obj.mesh, full, depth + 1)
-    for name in ("x", "field"):  # results of newtonraphson() and other items
-        child = getattr(obj, name, None)
-        if child is not None and child is not obj:
-            found = _parts(child, full, depth + 1)
-            if found:
-                return found
-    return None
-
-
-def _search(namespace):
-    "Find something to display in the namespace of the script."
-    values = [
-        value
-        for key, value in namespace.items()
-        if not key.startswith("_")
-        and not isinstance(value, (types.ModuleType, type, types.FunctionType))
-    ]
-    nested = [v for value in values if isinstance(value, (list, tuple)) for v in value]
-    solids = [v for v in values + nested if _is_solid(v)]
-    fields = [v for v in values if isinstance(v, fem.FieldContainer)]
-    meshes = [v for v in values if isinstance(v, (fem.Mesh, fem.MeshContainer))]
-    candidates = [solids, namespace.get("field"), *fields, namespace.get("mesh"), *meshes]
-    for candidate in candidates:
-        if _parts(candidate):
-            return candidate
-    return None
-
-
-# Surface triangulation
-
-_ELEMENTS = {
-    "triangle": "Triangle",
-    "triangle6": "QuadraticTriangle",
-    "quad": "Quad",
-    "quad8": "QuadraticQuad",
-    "quad9": "BiQuadraticQuad",
-    "tetra": "Tetra",
-    "tetra10": "QuadraticTetra",
-    "hexahedron": "Hexahedron",
-    "hexahedron20": "QuadraticHexahedron",
-    "hexahedron27": "TriQuadraticHexahedron",
-}
-_WEDGE = np.array(
-    [[0, 0, -1], [1, 0, -1], [0, 1, -1], [0, 0, 1], [1, 0, 1], [0, 1, 1]], dtype=float
-)
-_LINES = ("line", "line3", "VTK_LAGRANGE_LINE")
-_TEMPLATES = {}
-
-
-def _reference(cell_type, nnodes):
-    "Points of the reference cell in the node order of the mesh cells."
-    name = _ELEMENTS.get(cell_type)
-    if name is not None and hasattr(fem, name):
-        points = np.asarray(getattr(fem, name)().points, dtype=float)
-        if len(points) == nnodes:
-            return points
-    if cell_type in ("VTK_LAGRANGE_HEXAHEDRON", "VTK_LAGRANGE_QUADRILATERAL"):
-        dim = 3 if cell_type.endswith("HEXAHEDRON") else 2
-        order = int(round(nnodes ** (1 / dim))) - 1
-        Mesh = (
-            fem.mesh.CubeArbitraryOrderHexahedron
-            if dim == 3
-            else fem.mesh.RectangleArbitraryOrderQuad
-        )
-        mesh = Mesh(a=(-1.0,) * dim, b=(1.0,) * dim, order=order)
-        if mesh.cells.shape[1] == nnodes:
-            return np.asarray(mesh.points, dtype=float)[mesh.cells[0]]
-    if cell_type == "wedge" and nnodes == 6:
-        return _WEDGE
-    return None
-
-
-def _planes(points, cell_type):
-    "Planes of the faces (3d) or edges (2d) of the reference cell."
-    dim = points.shape[1]
-    lower, upper = points.min(axis=0), points.max(axis=0)
-    eye = np.eye(dim)
-    if cell_type.startswith(("tetra", "triangle")):
-        planes = [(eye[k], lower[k]) for k in range(dim)]
-        normal = np.ones(dim) / np.sqrt(dim)
-        planes.append((normal, (points @ normal).max()))
-    elif cell_type == "wedge":
-        normal = np.array([1.0, 1.0, 0.0]) / np.sqrt(2)
-        planes = [(eye[0], lower[0]), (eye[1], lower[1]), (normal, (points @ normal).max())]
-        planes += [(eye[2], lower[2]), (eye[2], upper[2])]
-    else:
-        planes = [(eye[k], c) for k in range(dim) for c in (lower[k], upper[k])]
-    scale = np.ptp(points, axis=0).max()
-    return np.array(
-        [np.abs(points @ n - c) < 1e-8 * scale for n, c in planes]
-    ).T  # (nnodes, nplanes)
-
-
-def _clip(ring):
-    "Triangulate a polygon by clipping every second vertex."
-    triangles = []
-    while len(ring) > 3:
-        n = len(ring)
-        clip = set(range(0, 2 * min(n // 2, n - 3), 2))
-        triangles += [(ring[i - 1], ring[i], ring[i + 1]) for i in clip]
-        ring = [node for i, node in enumerate(ring) if i not in clip]
-    triangles.append(tuple(ring))
-    return triangles
-
-
-def _face(points, nodes, corners, interior, normal):
-    "Triangles and edges of a face, given by local node numbers."
-    center = points[corners].mean(axis=0)
-    if normal is None:
-        u, v = np.eye(points.shape[1])[:2]
-    else:
-        u = points[corners[0]] - center
-        u -= normal * (u @ normal)
-        u /= np.linalg.norm(u)
-        v = np.cross(normal, u)
-    rel = points[nodes] - center
-    ring = [int(i) for i in np.asarray(nodes)[np.argsort(np.arctan2(rel @ v, rel @ u))]]
-    start = next(i for i, node in enumerate(ring) if node in corners)
-    ring = ring[start:] + ring[:start]
-    mid = [i for i in interior if np.linalg.norm(points[i] - center) < 1e-8]
-    if mid:
-        triangles = [(ring[i - 1], ring[i], mid[0]) for i in range(len(ring))]
-    else:
-        triangles = _clip(ring)
-    return {
-        "corners": sorted(int(c) for c in corners),
-        "triangles": np.array(triangles, dtype=np.int64),
-        "edges": np.array([(ring[i - 1], ring[i]) for i in range(len(ring))]),
-    }
-
-
-def _templates(cell_type, nnodes):
-    "Face templates of a cell type as ``(kind, faces)``."
-    key = (cell_type, nnodes)
-    if key in _TEMPLATES:
-        return _TEMPLATES[key]
-    result = (None, [])
-    if cell_type in _LINES or (cell_type not in ("vertex",) and nnodes == 2):
-        result = ("line", [])
-    else:
-        points = _reference(cell_type, nnodes)
-        if points is not None and points.shape[1] in (2, 3):
-            on = _planes(points, cell_type)
-            count = on.sum(axis=1)
-            if points.shape[1] == 2:
-                nodes = np.flatnonzero(count >= 1)
-                corners = list(np.flatnonzero(count >= 2))
-                interior = list(np.flatnonzero(count == 0))
-                result = ("surface", [_face(points, nodes, corners, interior, None)])
-            else:
-                faces = []
-                for p in range(on.shape[1]):
-                    face = on[:, p]
-                    normal = np.zeros(3)
-                    nodes = np.flatnonzero(face & (count >= 2))
-                    corners = list(np.flatnonzero(face & (count >= 3)))
-                    interior = list(np.flatnonzero(face & (count == 1)))
-                    if len(corners) >= 3:
-                        c = points[corners]
-                        normal = np.cross(c[1] - c[0], c[2] - c[0])
-                        normal /= np.linalg.norm(normal)
-                        faces.append(_face(points, nodes, corners, interior, normal))
-                result = ("volume", faces)
-    _TEMPLATES[key] = result
-    return result
-
-
-def _build(meshes):
-    "Boundary triangles (with their cells) and edges of a list of meshes."
-    shared = all(m.points is meshes[0].points for m in meshes)
-    points, offset, ncells, faces, lines = [], 0, 0, [], []
-    for i, mesh in enumerate(meshes):
-        X = np.asarray(mesh.points, dtype=float)
-        X = X.reshape(len(X), -1)
-        if not shared or i == 0:
-            points.append(X)
-        cells = np.asarray(mesh.cells)
-        cells = cells.reshape(len(cells), -1)
-        kind, templates = _templates(str(mesh.cell_type), cells.shape[1])
-        cells = cells + (0 if shared else offset)
-        if kind == "line":
-            lines.append(cells[:, :2])
-        for template in templates:
-            faces.append((kind == "volume", template, cells, ncells))
-        if not shared:
-            offset += len(X)
-        ncells += len(cells)
-    if not points:
-        return None
-    pdim = max(p.shape[1] for p in points)
-    X = np.concatenate([np.pad(p, ((0, 0), (0, pdim - p.shape[1]))) for p in points])
-
-    # keep the faces of volume cells which belong to only one cell
-    groups = {}
-    for i, (volume, template, cells, _) in enumerate(faces):
-        if volume:
-            keys = np.sort(cells[:, template["corners"]], axis=1)
-            groups.setdefault(keys.shape[1], []).append((i, keys))
-    masks = {}
-    for items in groups.values():
-        keys = np.concatenate([k for i, k in items])
-        _, inverse, counts = np.unique(
-            keys, axis=0, return_inverse=True, return_counts=True
-        )
-        once = counts[inverse.ravel()] == 1
-        start = 0
-        for i, k in items:
-            masks[i] = once[start : start + len(k)]
-            start += len(k)
-
-    triangles, owners, edges = [], [], list(lines)
-    for i, (volume, template, cells, first) in enumerate(faces):
-        index = np.flatnonzero(masks[i]) if volume else np.arange(len(cells))
-        if len(index):
-            selected = cells[index]
-            triangles.append(selected[:, template["triangles"]].reshape(-1, 3))
-            owners.append(np.repeat(index + first, len(template["triangles"])))
-            edges.append(selected[:, template["edges"]].reshape(-1, 2))
-
-    triangles = np.concatenate(triangles) if triangles else np.zeros((0, 3), int)
-    owners = np.concatenate(owners) if owners else np.zeros(0, int)
-    edges = np.concatenate(edges) if edges else np.zeros((0, 2), int)
-    if len(edges):
-        edges = np.unique(np.sort(edges, axis=1), axis=0)
-    used = np.unique(np.concatenate([triangles.ravel(), edges.ravel()]))
-    if len(used) == 0:
-        return None
-    cells, owners = np.unique(owners, return_inverse=True)
-
-    positions = np.zeros((len(used), 3), dtype=np.float32)
-    positions[:, :pdim] = X[used, :3]
-    extent = np.ptp(positions, axis=0)
-    return {
-        "used": used,
-        "cells": cells,
-        "npoints": len(X),
-        "ncells": ncells,
-        "shared": shared,
-        "pdim": pdim,
-        "planar": bool(pdim < 3 or extent[2] <= 1e-9 * max(extent.max(), 1e-300)),
-        "positions": positions,
-        "triangles": np.searchsorted(used, triangles).astype(np.uint32),
-        "owners": owners.astype(np.uint32).ravel(),
-        "edges": np.searchsorted(used, edges).astype(np.uint32),
-    }
-
-
-def _topology(meshes):
-    key = tuple(
-        (id(m), id(m.points), id(m.cells), np.shape(m.points), np.shape(m.cells))
-        + (str(m.cell_type),)
-        for m in meshes
-    )
-    check = float(sum(np.sum(m.cells) + np.sum(m.points) for m in meshes))
-    if S.topo_key == (key, check):
-        return S.topo
-    topo = _build(meshes)
-    S.topo_key = (key, check)
-    S.topo = topo
-    if topo is not None:
-        S.topo_id += 1
-        topo["id"] = S.topo_id
-        meta = {
-            "id": topo["id"],
-            "pdim": topo["pdim"],
-            "planar": topo["planar"],
-            "ncells": len(topo["cells"]),
-        }
-        _send(
-            "topo",
-            meta,
-            np.ascontiguousarray(topo["positions"].ravel()),
-            np.ascontiguousarray(topo["triangles"].ravel()),
-            np.ascontiguousarray(topo["edges"].ravel()),
-            np.ascontiguousarray(topo["owners"]),
-        )
-    return topo
-
-
-# Scenes
-
-_COMPONENTS = {
-    1: [""],
-    2: ["X", "Y"],
-    3: ["X", "Y", "Z"],
-    6: ["XX", "YY", "ZZ", "XY", "YZ", "XZ"],
-    9: ["XX", "XY", "XZ", "YX", "YY", "YZ", "ZX", "ZY", "ZZ"],
-}
-_PRINCIPAL = {
-    2: ["(Max. Principal)", "(Min. Principal)"],
-    3: ["(Max. Principal)", "(Int. Principal)", "(Min. Principal)"],
-}
-
-
-def _finite(value):
-    value = float(value)
-    return value if math.isfinite(value) else None
-
-
-def _range(values):
-    finite = values[np.isfinite(values)]
-    if not len(finite):
-        return [None, None]
-    return [_finite(finite.min()), _finite(finite.max())]
-
-
-def _quantity(label, where, values, pdim):
-    "Labels of the components and value ranges of a point- or cell-data array."
-    dim = values.shape[1]
-    principal = "Principal Values of " in label
-    vector = label == "Displacement" or label.startswith("Field")
-    if principal and dim in _PRINCIPAL:
-        components = _PRINCIPAL[dim]
-    elif pdim == 2 and dim == 3 and not vector:
-        components = ["XX", "YY", "XY"]  # 2d-tensors in reduced vector storage
-    elif pdim == 2 and dim == 4 and not vector:
-        components = ["XX", "XY", "YX", "YY"]
-    else:
-        components = _COMPONENTS.get(dim, [str(k) for k in range(dim)])
-    magnitude = not principal and dim in (2, 3) and components == _COMPONENTS[dim]
-    quantity = {
-        "label": label,
-        "where": where,
-        "dim": dim,
-        "title": label[20:] if principal else label,
-        "components": components,
-        "magnitude": magnitude,
-        "ranges": [_range(values[:, k]) for k in range(dim)],
-    }
-    if magnitude:
-        quantity["mrange"] = _range(np.linalg.norm(values, axis=1))
-    return quantity
-
-
-def _combine(parts, where, label, topo):
-    "Values of a data array for all parts (NaN for parts without this array)."
-    dims = [p[where][label].shape[1] for p in parts if label in p[where]]
-    dim = dims[0]
-    if where == "point" and topo["shared"]:
-        values = np.full((topo["npoints"], dim), np.nan)
-        for part in parts:
-            data = part[where].get(label)
-            if data is not None and data.shape[1] == dim:
-                index = np.unique(np.asarray(part["mesh"].cells))
-                values[index] = data[index]
-        return values
-    blocks = []
-    for part in parts:
-        size = len(part["mesh"].points) if where == "point" else len(part["mesh"].cells)
-        data = part[where].get(label)
-        blocks.append(data if data is not None and data.shape[1] == dim else np.full((size, dim), np.nan))
-    return np.concatenate(blocks)
-
-
-def _show(scene):
-    "Send a scene (a plotter with parts) to the 3D view."
-    parts = scene.parts
-    topo = _topology([part["mesh"] for part in parts])
-    if topo is None:
-        _send("clear")
-        return
-    quantities, blocks = [], []
-    for where, index in (("point", topo["used"]), ("cell", topo["cells"])):
-        labels = list(dict.fromkeys(label for part in parts for label in part[where]))
-        if where == "point" and "Displacement" in labels:
-            labels.remove("Displacement")
-            labels.insert(0, "Displacement")
-        for label in labels:
-            values = _combine(parts, where, label, topo)
-            quantities.append(_quantity(label, where, values, topo["pdim"]))
-            blocks.append(values[index].astype(np.float32).ravel())
-    select = None
-    if scene.select is not None:
-        label = scene.select["label"]
-        for part in parts:
-            label = part["alias"].get(label, label)
-        component = scene.select["component"]
-        if any(q["label"] == label for q in quantities):
-            select = {"label": label, "component": None if component is None else int(component)}
-    meta = {
-        "topo": topo["id"],
-        "quantities": quantities,
-        "factor": _finite(scene.factor) or 0.0,
-        "undeformed": bool(scene.undeformed),
-        "select": select,
-        "cmap": scene.cmap,
-    }
-    values = np.concatenate(blocks) if blocks else np.zeros(0, dtype=np.float32)
-    _send("frame", meta, values)
-
-
-def _emit(scene, force=False):
-    "Show a scene in the 3D view (at most every ``interval`` seconds)."
-    now = time.perf_counter()
-    if not force and now - S.shown < S.interval:
-        return
-    try:
-        _show(scene)
-    except Exception as error:  # the viewer must never break the script
-        print(f"3D view: {type(error).__name__}: {error}", file=sys.stderr)
-    S.shown = time.perf_counter()
-    S.interval = max(0.1, 4 * (S.shown - now))
-
-
-def _final(namespace):
-    "The scene after the script: the last plot or solution, or a model of the script."
-    kind, obj = S.last or (None, None)
-    if kind == "plot":
-        return obj
-    target = obj if kind == "solve" else _search(namespace)
-    parts = _parts(target, full=True)
-    return _Plotter(parts) if parts else None
-
-
-# Patches
-
-
-def _replace(old, new):
-    for name, module in list(sys.modules.items()):
-        if module is None or not name.startswith("felupe"):
-            continue
-        for attr, value in list(vars(module).items()):
-            if value is old:
-                setattr(module, attr, new)
-
-
-def _mesh_of(obj):
-    "The mesh of an item or boundary condition (or None)."
-    if isinstance(obj, dict):
-        obj = next(iter(obj.values()), None)
-    field = getattr(obj, "field", None)
-    mesh = getattr(getattr(field, "region", None), "mesh", None)
-    return mesh if isinstance(mesh, fem.Mesh) else None
-
-
-_KEEP = ("filename", "transparent_background", "scale", "ax", "dpi", "off_screen", "notebook")
-
-
-def _patch():
-    original = fem.newtonraphson
-
-    @functools.wraps(original)
-    def newtonraphson(*args, **kwargs):
-        res = original(*args, **kwargs)
-        if getattr(res, "success", False):
-            solids = [item for item in kwargs.get("items") or [] if _is_solid(item)]
-            target = solids or getattr(res, "x", None)
-            try:
-                parts = _parts(target)
-            except Exception:
-                parts = None
-            if parts:
-                S.last = ("solve", target)
-                _emit(_Plotter(parts))
-        return res
-
-    _replace(original, newtonraphson)
-
-    # FElupe's views keep their point- and cell-data, the pyvista-mesh is not created
-    def view_init(self, mesh, point_data=None, cell_data=None, cell_type=None):
-        self.mesh = _NULL
-        self._web = _part(mesh, point_data, cell_data)
-
-    def scene_plot(
-        self,
-        name=None,
-        component=0,
-        label=None,
-        factor=1.0,
-        show_edges=True,
-        show_undeformed=True,
-        plotter=None,
-        **kwargs,
-    ):
-        if not isinstance(plotter, _Plotter):
-            plotter = _Plotter()
-        part = getattr(self, "_web", None)
-        if part is None or not _usable([part]):
-            return plotter
-        if name is not None:
-            data = part["alias"].get(name, name)
-            if data not in part["point"] and data not in part["cell"]:
-                available = ", ".join(repr(key) for key in [*part["point"], *part["cell"]])
-                raise KeyError(f"{name!r} is not available, choose one of {available}.")
-        select = None if name is None else {"label": name, "component": component}
-        plotter.add(part, select, factor, show_undeformed, kwargs.get("cmap"))
-        S.last = ("plot", plotter)
-        _emit(plotter, force=True)
-        return plotter
-
-    view = sys.modules["felupe.view._scene"].Scene
-    view.plot = scene_plot
-    sys.modules["felupe.view._mesh"].ViewMesh.__init__ = view_init
-
-    def container_plot(self, *args, plotter=None, **kwargs):
-        for key in ("colors", "opacity", "labels", "add_legend", "show_undeformed"):
-            kwargs.pop(key, None)
-        for mesh in self.meshes:
-            plotter = mesh.view().plot(*args, show_undeformed=False, plotter=plotter, **kwargs)
-        return plotter if plotter is not None else _NULL
-
-    solid = getattr(sys.modules.get("felupe.mechanics._solidbody"), "Solid", None)
-    solid_plot = getattr(solid, "plot", None)
-
-    def scalar_solid_plot(self, *args, project=None, **kwargs):
-        if not _is_vector(self.field):  # e.g. temperature
-            return self.field.plot(*args, project=project, **kwargs)
-        return solid_plot(self, *args, project=project, **kwargs)
-
-    def screenshot(self, *args, **kwargs):
-        for key in _KEEP:
-            kwargs.pop(key, None)
-        self.plot(*args, **kwargs)
-        return _NULL
-
-    def decoration(self, *args, plotter=None, **kwargs):
-        "Points, lines or glyphs which are added to a plot of the model."
-        if plotter is not None:
-            return plotter
-        mesh = _mesh_of(self)
-        return mesh.plot() if mesh is not None else _NULL
-
-    def hidden(self, *args, plotter=None, **kwargs):
-        "Plots of reference cells and quadrature points are not shown."
-        return plotter if plotter is not None else _NULL
-
-    def nothing(self, *args, **kwargs):
-        return _NULL
-
-    models = (fem.Mesh, fem.FieldContainer) + ((solid,) if solid else ())
-    shown = tuple(f"felupe.{m}" for m in ("mesh", "field", "dof", "mechanics", "thermal"))
-    hiding = tuple(f"felupe.{m}" for m in ("region", "element", "quadrature"))
-    for name, module in list(sys.modules.items()):
-        if module is None or not name.startswith("felupe"):
-            continue
-        for cls in list(vars(module).values()):
-            if not isinstance(cls, type) or not cls.__module__.startswith(shown + hiding):
-                continue
-            if "Curve" in cls.__name__ or "Material" in cls.__name__:
-                continue  # matplotlib-based plots
-            own = vars(cls)
-            if cls.__module__.startswith(hiding):
-                methods = {"plot": hidden, "screenshot": nothing, "imshow": nothing}
-            elif cls is fem.MeshContainer:
-                methods = {"plot": container_plot, "screenshot": screenshot, "imshow": screenshot}
-            elif cls in models:
-                methods = {"screenshot": screenshot, "imshow": screenshot}
-                if cls is solid:
-                    methods["plot"] = scalar_solid_plot
-            else:
-                methods = {"plot": decoration, "screenshot": screenshot, "imshow": screenshot}
-            for method, function in methods.items():
-                if callable(own.get(method)):
-                    setattr(cls, method, function)
-
-
-def _stub_pyvista():
-    "A pyvista-module whose plotters show their content in the 3D view."
-    if importlib.util.find_spec("pyvista") is not None:
-        return
-    module = types.ModuleType("pyvista")
-    module.__spec__ = importlib.machinery.ModuleSpec("pyvista", None)
-    module.Plotter = _Plotter
-
-    def getattr_(name):
-        if name.startswith("__"):
-            raise AttributeError(name)
-        return _NULL
-
-    module.__getattr__ = getattr_
-    sys.modules["pyvista"] = module
-
-
-_patch()
-_stub_pyvista()
+# The 3D view: the plotting backend "web"
+
+try:
+    from felupe.view._backends import WebGLBackend, WebGLPlotter
+    from felupe.view._backends._webgl._page import viewer as _viewer
+except ImportError:  # FElupe < 12, without plotting backends
+    WebGLBackend = WebGLPlotter = _viewer = None
+
+
+def _pack(value, arrays):
+    "Replace the arrays of a scene by their index in a list of arrays (binary data)."
+    if isinstance(value, dict):
+        data = value.get("data")
+        if set(value) == {"dtype", "size", "data"} and isinstance(data, np.ndarray):
+            arrays.append(np.ascontiguousarray(data))
+            return {"dtype": value["dtype"], "size": value["size"], "array": len(arrays) - 1}
+        return {key: _pack(item, arrays) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_pack(item, arrays) for item in value]
+    return value
+
+
+if WebGLBackend is not None:
+
+    class WebPlotter(WebGLPlotter):
+        "A plotter of the WebGL viewer, which is shown in the 3D view of the page."
+
+        def show(self, filename=None):
+            "Show the plot in the 3D view (and write it to a HTML file, if given)."
+            path = None if filename is None else self.export_html(filename)
+            arrays = []
+            scene = _pack(self.scene(), arrays)
+            _send("scene", scene, *arrays)
+            S.shown = True
+            return path
+
+        def __repr__(self):
+            return "<plot, shown in the 3D view by show()>"
+
+    class WebBackend(WebGLBackend):
+        "The plotting backend of the page, a WebGL viewer in the 3D view."
+
+        def is_plotter(self, plotter):
+            return isinstance(plotter, WebPlotter)
+
+        def prepare_plotter(
+            self, plotter=None, theme="default", off_screen=False, notebook=False
+        ):
+            if plotter is None:
+                plotter = WebPlotter()
+            return super().prepare_plotter(plotter, theme, off_screen, notebook)
+
+        def _not_supported(self, what):
+            return NotImplementedError(
+                f"The 3D view of FElupe Web does not support {what}. Show a plot by "
+                'plot().show(), e.g. solid.plot("Displacement").show().'
+            )
+
+    fem.view.register_plotting_backend("web", WebBackend())
+    fem.set_plotting_backend("web")
 
 
 # Entry points
@@ -1391,8 +660,8 @@ def _figures():
 
 
 def run(code):
-    "Run a script and show its model. Returns a JSON string."
-    S.last, S.shown, S.interval, S.topo_key = None, 0.0, 0.1, None
+    "Run a script and show its plots. Returns a JSON string."
+    S.shown = False
     plt = sys.modules.get("matplotlib.pyplot")
     if plt is not None:
         plt.close("all")
@@ -1408,14 +677,8 @@ def run(code):
     except BaseException as error:
         result = _failure(error)
     result["time"] = time.perf_counter() - start
-    try:
-        scene = _final(namespace)
-        if scene is not None and scene.parts:
-            _show(scene)
-        else:
-            _send("clear")
-    except Exception as error:
-        print(f"3D view: {type(error).__name__}: {error}", file=sys.stderr)
+    if not S.shown:
+        _send("clear")
     _figures()
     sys.stdout.flush()
     sys.stderr.flush()
@@ -1439,6 +702,21 @@ def missing_imports(code):
     return json.dumps(sorted(name for name in names if not importable(name)))
 
 
+def _shown(code):
+    "A script whose screenshots (imshow) are shown in the 3D view by plot().show()."
+    return re.sub(
+        r"^(?:\w+\s*=\s*)?([\w.]+)\.imshow\((.*)\)\s*$",
+        r"\1.plot(\2).show()",
+        code,
+        flags=re.MULTILINE,
+    )
+
+
+def viewer():
+    "The source of the WebGL viewer of FElupe (an ES module) or None."
+    return None if _viewer is None else _viewer()
+
+
 def info():
     import scipy
 
@@ -1455,7 +733,8 @@ def info():
             "numpy": np.__version__,
             "scipy": scipy.__version__,
             "python": sys.version.split()[0],
-            "hello": hello.strip("\n") + "\n" if hello.strip() else "",
+            "hello": _shown(hello.strip("\n")) + "\n" if hello.strip() else "",
+            "viewer": _viewer is not None,
         }
     )
 </script>
@@ -1590,7 +869,7 @@ async function boot({ base, felupe, bridge, files }) {
   py.runPython("import sys\nsys.path.insert(0, '/lib/felupe_web')");
   web = py.pyimport("felupe_web");
   flush();
-  post({ type: "ready", info: JSON.parse(web.info()) });
+  post({ type: "ready", info: JSON.parse(web.info()), viewer: web.viewer() });
 }
 
 async function install(name) {
@@ -1681,11 +960,16 @@ const store = {
   },
 };
 
-// felupe=<version> pins a release, felupe=<url to .whl> installs a wheel
+// felupe=<version> pins a release, felupe=<url or path of a .whl> installs a wheel. A
+// path is relative to the page (e.g. a wheel next to index.html), i.e. the wheel has the
+// origin of the page and the server needs no CORS headers.
 function felupeRequirement() {
   const value = (params.get("felupe") || "").trim();
   if (/^\d[\w.+!-]*$/.test(value)) return `felupe==${value}`;
-  if (/^https?:\/\/\S+\.whl$/.test(value)) return value;
+  if (/^\S+\.whl$/.test(value)) {
+    const url = new URL(value, location.href);
+    if (url.protocol === "http:" || url.protocol === "https:") return url.href;
+  }
   return "felupe";
 }
 
@@ -2059,465 +1343,6 @@ function createOutput(box) {
   return { write, error: (text) => block(text, "err"), note: (text) => block(text, "note"), figure, clear };
 }
 
-// Viewer
-
-// 256 colors (sRGB, 8 bit): turbo and viridis of matplotlib, Fast of ParaView
-// (F. Samsel, W. A. Scott, K. Moreland)
-const COLORMAPS = {
-  turbo: "30123b32154333184a341b51351e5836215f37246638276d392a733a2d793b2f803c32863d358b3e38913f3b973f3e9c4040a24143a74146ac4249b1424bb5434eba4451bf4454c34456c74559cb455ccf455ed34661d64664da4666dd4669e0466be3476ee64771e94773eb4776ee4778f0477bf2467df44680f64682f84685fa4687fb458afc458cfd448ffe4391fe4294ff4196ff4099ff3e9bfe3d9efe3ba0fd3aa3fc38a5fb37a8fa35abf833adf731aff52fb2f42eb4f22cb7f02ab9ee28bceb27bee925c0e723c3e422c5e220c7df1fc9dd1ecbda1ccdd81bd0d51ad2d21ad4d019d5cd18d7ca18d9c818dbc518ddc218dec018e0bd19e2bb19e3b91ae4b61ce6b41de7b21fe9af20eaac22ebaa25eca727eea42aefa12cf09e2ff19b32f29835f39438f4913cf58e3ff68a43f78746f8844af8804ef97d52fa7a55fa7659fb735dfc6f61fc6c65fd6969fd666dfe6271fe5f75fe5c79fe597dff5680ff5384ff5188ff4e8bff4b8fff4992ff4796fe4499fe429cfe409ffd3fa1fd3da4fc3ca7fc3aa9fb39acfb38affa37b1f936b4f836b7f735b9f635bcf534bef434c1f334c3f134c6f034c8ef34cbed34cdec34d0ea34d2e935d4e735d7e535d9e436dbe236dde037dfdf37e1dd37e3db38e5d938e7d739e9d539ebd339ecd13aeecf3aefcd3af1cb3af2c93af4c73af5c53af6c33af7c13af8be39f9bc39faba39fbb838fbb637fcb336fcb136fdae35fdac34fea933fea732fea431fea130fe9e2ffe9b2dfe992cfe962bfe932afe9029fd8d27fd8a26fc8725fc8423fb8122fb7e21fa7b1ff9781ef9751df8721cf76f1af66c19f56918f46617f36315f26014f15d13f05b12ef5811ed5510ec530feb500eea4e0de84b0ce7490ce5470be4450ae2430ae14109df3f08dd3d08dc3b07da3907d83706d63506d43305d23105d02f05ce2d04cc2b04ca2a04c82803c52603c32503c12302be2102bc2002b91e02b71d02b41b01b21a01af1801ac1701a91601a71401a41301a112019e10019b0f01980e01950d01920b018e0a018b09028808028507028106027e05027a0403",
-  viridis: "44015444025645045745055946075a46085c460a5d460b5e470d60470e6147106347116447136548146748166848176948186a481a6c481b6d481c6e481d6f481f70482071482173482374482475482576482677482878482979472a7a472c7a472d7b472e7c472f7d46307e46327e46337f463480453581453781453882443983443a83443b84433d84433e85423f854240864241864142874144874045884046883f47883f48893e49893e4a893e4c8a3d4d8a3d4e8a3c4f8a3c508b3b518b3b528b3a538b3a548c39558c39568c38588c38598c375a8c375b8d365c8d365d8d355e8d355f8d34608d34618d33628d33638d32648e32658e31668e31678e31688e30698e306a8e2f6b8e2f6c8e2e6d8e2e6e8e2e6f8e2d708e2d718e2c718e2c728e2c738e2b748e2b758e2a768e2a778e2a788e29798e297a8e297b8e287c8e287d8e277e8e277f8e27808e26818e26828e26828e25838e25848e25858e24868e24878e23888e23898e238a8d228b8d228c8d228d8d218e8d218f8d21908d21918c20928c20928c20938c1f948c1f958b1f968b1f978b1f988b1f998a1f9a8a1e9b8a1e9c891e9d891f9e891f9f881fa0881fa1881fa1871fa28720a38620a48621a58521a68522a78522a88423a98324aa8325ab8225ac8226ad8127ad8128ae8029af7f2ab07f2cb17e2db27d2eb37c2fb47c31b57b32b67a34b67935b77937b87838b9773aba763bbb753dbc743fbc7340bd7242be7144bf7046c06f48c16e4ac16d4cc26c4ec36b50c46a52c56954c56856c66758c7655ac8645cc8635ec96260ca6063cb5f65cb5e67cc5c69cd5b6ccd5a6ece5870cf5773d05675d05477d1537ad1517cd2507fd34e81d34d84d44b86d54989d5488bd6468ed64590d74393d74195d84098d83e9bd93c9dd93ba0da39a2da37a5db36a8db34aadc32addc30b0dd2fb2dd2db5de2bb8de29bade28bddf26c0df25c2df23c5e021c8e020cae11fcde11dd0e11cd2e21bd5e21ad8e219dae319dde318dfe318e2e418e5e419e7e419eae51aece51befe51cf1e51df4e61ef6e620f8e621fbe723fde725",
-  fast: "0e0e7810117a12147c14177e16197f171b81191e831a20851c23871d25891f278b202a8d212c8f222e91243193253395263597273799283a9b293c9d2a3e9f2b40a12c43a32d45a52e47a72f4aa9304cab314ead3251af3353b13455b33457b5355ab7365cb9375ebb3861bd3863bf3965c13a68c33b6ac53b6cc73c6fc93d71cb3d74cd3e76cf3f78d0417ad1427cd2437fd34481d54583d64685d74787d8488ad9498cda4a8edb4b90dd4c93de4d95df4e97e04f99e14f9be2509ee351a0e452a2e653a5e754a7e854a9e955abea56aeeb57b0ec57b2ee58b4ef59b7f05ab9f15abbf25bbef35ebff361c1f365c2f368c3f26bc5f26ec6f270c7f273c9f176caf179cbf17bcdf17ecef080cff083d1f085d2f088d4ef8ad5ef8dd6ef8fd8ef91d9ee94dbee96dcee98dded9adfed9ce0ed9fe2eda1e3eca3e4eca5e6eca7e7eba9e9ebabeaebadebeaafedeab2ede8b6eee6baeee4bdeee2c0eee0c4eeddc7efdbcaefd9cdefd7d0efd5d3efd2d6f0d0d9f0cedcf0ccdff0cae1f1c7e4f1c5e6f0c3e7efc0e8eebde9ecbae9ebb7eaeab4ebe9b1ece7aeece6abede5a8eee4a5eee2a2efe19ff0e09cf0df99f1dd96f1dc94f2db91f2da8ef3d88bf3d788f4d685f4d582f4d380f4d17ef4cf7df4cd7bf3cc79f3ca78f3c876f3c674f3c473f2c371f2c170f2bf6ef2bd6cf2bb6bf1ba69f1b867f1b666f0b464f0b262f0b161f0af5fefad5eefab5cefa95aeea859eea657eea455eda254eda052ed9f51ec9d4feb9b4eea994de9974ce8954be8934ae79249e69047e58e46e48c45e38a44e28843e18642e18441e08340df813fde7f3ddd7d3cdc7b3bdb793ada7739d97538d87337d77236d77035d66e34d56c33d46a31d36830d2662fd1642ed0622dcf602cce5e2bcd5c2acc5a29cb5829c95728c85528c75428c55228c45127c24f27c14d27c04c27be4a26bd4926bc4726ba4526b94425b74225b64025b53f25b33d24b23b24b13a24af3823ae3623ac3523ab3323aa3122a82f22a72d22a62c22a42a21a32821a12621a024209f22209d20209c1d209b1b1f99191f98161f96141e",
-};
-const DEFAULT_COLORMAP = "turbo";
-const colormaps = {};
-function colormap(name) {
-  if (!COLORMAPS[name]) name = DEFAULT_COLORMAP;
-  if (!colormaps[name]) {
-    const hex = COLORMAPS[name];
-    const srgb = new Uint8Array(768);
-    const linear = new Float32Array(768);
-    for (let i = 0; i < 768; i++) {
-      srgb[i] = parseInt(hex.substr(2 * i, 2), 16);
-      const c = srgb[i] / 255;
-      linear[i] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    }
-    const stops = Array.from({ length: 33 }, (_, i) => {
-      const j = 3 * Math.min(255, i * 8);
-      return `rgb(${srgb[j]} ${srgb[j + 1]} ${srgb[j + 2]}) ${((i / 32) * 100).toFixed(1)}%`;
-    });
-    colormaps[name] = { name, linear, gradient: `linear-gradient(90deg, ${stops.join(", ")})` };
-  }
-  return colormaps[name];
-}
-
-function formatValue(value, scale) {
-  if (!Number.isFinite(value)) return String(value);
-  if (Math.abs(value) <= 1e-9 * scale) return "0";
-  const a = Math.abs(value);
-  if (a >= 1e-3 && a < 1e5) return String(+value.toPrecision(4));
-  return value.toExponential(2);
-}
-
-const THEMES = {
-  light: { plain: 0xadbcc5, edges: 0x0d171c, edgeOpacity: 0.3, axes: ["#c8382c", "#2c8a3c", "#2a62c6"] },
-  dark: { plain: 0x8ea0aa, edges: 0x040809, edgeOpacity: 0.45, axes: ["#ff7366", "#62cf72", "#72a8ff"] },
-};
-
-async function createViewer(host) {
-  const THREE = await import("three");
-  const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
-
-  const canvas = host.querySelector("canvas");
-  const triad = host.querySelector("#triad");
-  const legend = host.querySelector("#legend");
-  const pick = host.querySelector("#pick");
-  const select = host.querySelector("#quantity");
-
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 1000);
-  scene.add(camera);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.52 * Math.PI));
-  const light = new THREE.DirectionalLight(0xffffff, 0.58 * Math.PI);
-  light.position.set(-0.35, 0.55, 1);
-  camera.add(light, light.target);
-
-  const surface = { flatShading: true, side: THREE.DoubleSide, shininess: 18, specular: 0x151515, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
-  const materials = {
-    color: new THREE.MeshPhongMaterial({ ...surface, vertexColors: true }),
-    plain: new THREE.MeshPhongMaterial({ ...surface }),
-    edges: new THREE.LineBasicMaterial({ transparent: true }),
-    lines: new THREE.LineBasicMaterial({ vertexColors: true }),
-    linesPlain: new THREE.LineBasicMaterial(),
-    undeformed: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }),
-  };
-  const plain = new THREE.Color(); // linear color for points and cells without values
-  const referenceBox = new THREE.Box3();
-
-  let theme = THEMES.light;
-  let controls = null;
-  let zUp = null;
-  let autoFit = true;
-  let dirty = true;
-  let model = null;
-  let frame = null;
-  let options = [];
-  let choice = store.get("quantity");
-  let showEdges = store.get("edges") !== "0";
-  let cmap = colormap(store.get("cmap"));
-  const cmapPick = host.querySelector("#cmap-pick");
-  const cmapSelect = host.querySelector("#cmap");
-  const colorbar = host.querySelector("#cbar");
-  const box = new THREE.Box3();
-
-  function setUp(z) {
-    if (z === zUp && controls) return;
-    zUp = z;
-    camera.up.set(0, z ? 0 : 1, z ? 1 : 0);
-    if (controls) controls.dispose();
-    controls = new OrbitControls(camera, canvas);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.14;
-    controls.screenSpacePanning = true;
-    controls.addEventListener("start", () => { autoFit = false; });
-    controls.addEventListener("change", () => { dirty = true; });
-  }
-  setUp(true);
-
-  function fit(resetDirection) {
-    if (!model || box.isEmpty()) return;
-    const center = box.getCenter(new THREE.Vector3());
-    const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1e-9);
-    let direction;
-    if (resetDirection) direction = model.planar ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0.9, -1.6, 1);
-    else direction = camera.position.clone().sub(controls.target);
-    if (direction.lengthSq() < 1e-30) direction.set(0.9, -1.6, 1);
-    direction.normalize();
-    const vertical = (camera.fov * Math.PI) / 180;
-    const horizontal = 2 * Math.atan(Math.tan(vertical / 2) * camera.aspect);
-    const distance = (radius / Math.sin(Math.min(vertical, horizontal) / 2)) * 1.12;
-    camera.position.copy(center).addScaledVector(direction, distance);
-    camera.near = distance / 100;
-    camera.far = distance * 100;
-    camera.updateProjectionMatrix();
-    controls.target.copy(center);
-    camera.lookAt(center);
-    controls.update();
-    dirty = true;
-  }
-
-  function clearModel() {
-    if (!model) return;
-    scene.remove(model.group);
-    model.group.traverse((obj) => obj.geometry && obj.geometry.dispose());
-    model = null;
-    frame = null;
-  }
-
-  // points: positions of the (warped) mesh-points for the edges; faces: three vertices
-  // per triangle, colored by point-data (interpolated) or by cell-data (flat)
-  function setTopo(meta, [positions, triangles, edges, owners]) {
-    const previous = model;
-    clearModel();
-    const n = positions.length / 3;
-    const ntri = triangles.length / 3;
-    const dynamic = (size) => new THREE.BufferAttribute(new Float32Array(size), 3).setUsage(THREE.DynamicDrawUsage);
-    const points = dynamic(n * 3);
-    points.array.set(positions);
-    const pointColor = dynamic(n * 3);
-    const group = new THREE.Group();
-    let mesh = null;
-    let wire = null;
-    let ghost = null;
-    let faces = null;
-    let faceColor = null;
-    if (ntri) {
-      faces = dynamic(ntri * 9);
-      faceColor = dynamic(ntri * 9);
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", faces);
-      geometry.setAttribute("color", faceColor);
-      mesh = new THREE.Mesh(geometry, materials.plain);
-      mesh.frustumCulled = false;
-      group.add(mesh);
-      const reference = new THREE.BufferGeometry();
-      reference.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      reference.setIndex(new THREE.BufferAttribute(triangles, 1));
-      ghost = new THREE.Mesh(reference, materials.undeformed);
-      ghost.frustumCulled = false;
-      ghost.visible = false;
-      group.add(ghost);
-    }
-    if (edges.length) {
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", points);
-      geometry.setAttribute("color", pointColor);
-      geometry.setIndex(new THREE.BufferAttribute(edges, 1));
-      wire = new THREE.LineSegments(geometry, mesh ? materials.edges : materials.linesPlain);
-      wire.frustumCulled = false;
-      wire.visible = showEdges || !mesh;
-      group.add(wire);
-    }
-    scene.add(group);
-    model = {
-      id: meta.id, planar: meta.planar, ncells: meta.ncells || 0, n, ntri,
-      reference: positions, triangles, owners, points, pointColor, faces, faceColor,
-      group, mesh, wire, ghost,
-    };
-    referenceBox.setFromArray(positions);
-    const newView = !previous || previous.planar !== meta.planar;
-    setUp(!meta.planar);
-    if (newView) autoFit = true;
-    apply();
-    if (autoFit) fit(newView);
-    host.querySelector("#hint").hidden = true;
-    dirty = true;
-  }
-
-  function keyOf(q, component) {
-    return `${q.where}|${q.label}|${component < 0 ? "m" : component}`;
-  }
-
-  function buildOptions(quantities, preferred) {
-    const groups = quantities.map((q, index) => {
-      const items = [];
-      if (q.magnitude) items.push({ key: keyOf(q, -1), label: `${q.title} Magnitude`, index, component: -1 });
-      q.components.forEach((c, k) => {
-        items.push({ key: keyOf(q, k), label: c ? `${q.title} ${c}` : q.title, index, component: k });
-      });
-      return { label: q.label, items };
-    });
-    const list = groups.flatMap((g) => g.items);
-    const same = list.length === options.length && list.every((o, i) => o.key === options[i].key);
-    options = list;
-    if (!same) {
-      const option = (o) => new Option(o.label, o.key);
-      select.replaceChildren(
-        ...(groups.length > 1
-          ? groups.map((g) => {
-              const el = document.createElement("optgroup");
-              el.label = g.label;
-              el.append(...g.items.map(option));
-              return el;
-            })
-          : list.map(option))
-      );
-    }
-    // a quantity named in plot() is shown, otherwise the last choice of the viewer
-    const q = preferred && quantities.find((x) => x.label === preferred.label);
-    if (q) {
-      const c = preferred.component;
-      choice = keyOf(q, c == null ? (q.magnitude ? -1 : 0) : Math.max(0, Math.min(c, q.dim - 1)));
-    } else {
-      const stored = store.get("quantity");
-      if (list.some((o) => o.key === stored)) choice = stored;
-      else if (!list.some((o) => o.key === choice)) choice = list.length ? list[0].key : null;
-    }
-    select.value = choice || "";
-    pick.hidden = cmapPick.hidden = !list.length;
-  }
-
-  function setFrame(meta, [values]) {
-    if (!model || meta.topo !== model.id) return;
-    let offset = 0;
-    const quantities = meta.quantities.map((q) => {
-      const item = { ...q, offset };
-      offset += q.dim * (q.where === "cell" ? model.ncells : model.n);
-      return item;
-    });
-    frame = { quantities, values, factor: meta.factor ?? 1, undeformed: !!meta.undeformed };
-    buildOptions(quantities, meta.select);
-    useColormap(COLORMAPS[meta.cmap] ? meta.cmap : store.get("cmap"));
-    apply();
-  }
-
-  function apply() {
-    if (!model) return;
-    const { n, ntri, reference, triangles, owners, points, pointColor, faces, faceColor, mesh, wire, ghost } = model;
-    const V = frame ? frame.values : null;
-
-    // warp the mesh-points by the displacements
-    const P = points.array;
-    const warp = frame && frame.quantities.find((q) => q.where === "point" && q.label === "Displacement");
-    P.set(reference);
-    if (warp) {
-      const { offset, dim } = warp;
-      const factor = frame.factor;
-      for (let i = 0; i < n; i++) {
-        for (let k = 0; k < Math.min(dim, 3); k++) {
-          const u = V[offset + i * dim + k];
-          if (Number.isFinite(u)) P[3 * i + k] += factor * u;
-        }
-      }
-    }
-    points.needsUpdate = true;
-    if (faces) {
-      const F = faces.array;
-      for (let t = 0; t < ntri * 3; t++) {
-        const j = 3 * triangles[t];
-        F[3 * t] = P[j];
-        F[3 * t + 1] = P[j + 1];
-        F[3 * t + 2] = P[j + 2];
-      }
-      faces.needsUpdate = true;
-    }
-    if (ghost) ghost.visible = !!(warp && frame.undeformed && frame.factor);
-
-    // colors
-    const option = frame && options.find((o) => o.key === choice);
-    const q = option && frame.quantities[option.index];
-    if (q && (q.where === "point" || mesh)) {
-      const count = q.where === "cell" ? model.ncells : n;
-      const s = new Float32Array(count);
-      for (let i = 0; i < count; i++) {
-        const base = q.offset + i * q.dim;
-        if (option.component >= 0) {
-          s[i] = V[base + option.component];
-        } else {
-          let sum = 0;
-          for (let k = 0; k < q.dim; k++) sum += V[base + k] ** 2;
-          s[i] = Math.sqrt(sum);
-        }
-      }
-      let [min, max] = (option.component >= 0 ? q.ranges[option.component] : q.mrange) || [null, null];
-      if (min == null || max == null) {
-        min = Infinity;
-        max = -Infinity;
-        for (const value of s) {
-          if (value < min) min = value;
-          if (value > max) max = value;
-        }
-      }
-      const range = max - min;
-      const paint = (C, j, value) => {
-        if (!Number.isFinite(value)) {
-          C[j] = plain.r;
-          C[j + 1] = plain.g;
-          C[j + 2] = plain.b;
-          return;
-        }
-        const t = range > 0 ? Math.min(1, Math.max(0, (value - min) / range)) : 0.5;
-        const l = 3 * Math.round(t * 255);
-        C[j] = cmap.linear[l];
-        C[j + 1] = cmap.linear[l + 1];
-        C[j + 2] = cmap.linear[l + 2];
-      };
-      if (q.where === "point") {
-        const C = pointColor.array;
-        for (let i = 0; i < n; i++) paint(C, 3 * i, s[i]);
-        pointColor.needsUpdate = true;
-        if (faceColor) {
-          const D = faceColor.array;
-          for (let t = 0; t < ntri * 3; t++) {
-            const j = 3 * triangles[t];
-            D[3 * t] = C[j];
-            D[3 * t + 1] = C[j + 1];
-            D[3 * t + 2] = C[j + 2];
-          }
-        }
-      } else {
-        const D = faceColor.array;
-        for (let t = 0; t < ntri; t++) {
-          paint(D, 9 * t, s[owners[t]]);
-          D.copyWithin(9 * t + 3, 9 * t, 9 * t + 3);
-          D.copyWithin(9 * t + 6, 9 * t, 9 * t + 3);
-        }
-      }
-      if (faceColor) faceColor.needsUpdate = true;
-      if (mesh) mesh.material = materials.color;
-      else if (wire) wire.material = materials.lines;
-      const scale = Math.max(Math.abs(min), Math.abs(max));
-      host.querySelector("#vmin").textContent = formatValue(min, scale);
-      host.querySelector("#vmax").textContent = range > 0 ? formatValue(max, scale) : "";
-      legend.hidden = false;
-    } else {
-      if (mesh) mesh.material = materials.plain;
-      else if (wire) wire.material = materials.linesPlain;
-      legend.hidden = true;
-    }
-    box.setFromBufferAttribute(points);
-    if (ghost && ghost.visible) box.union(referenceBox);
-    if (autoFit) fit(false);
-    dirty = true;
-  }
-
-  function clear(message) {
-    clearModel();
-    options = [];
-    legend.hidden = true;
-    pick.hidden = cmapPick.hidden = true;
-    const hint = host.querySelector("#hint");
-    hint.textContent = message || "";
-    hint.hidden = !message;
-    dirty = true;
-  }
-
-  function reset() {
-    autoFit = true;
-    fit(true);
-  }
-
-  function setEdges(on) {
-    showEdges = on;
-    store.set("edges", on ? null : "0");
-    if (model && model.wire && model.mesh) model.wire.visible = on;
-    dirty = true;
-  }
-
-  function setTheme(name) {
-    theme = THEMES[name] || THEMES.light;
-    materials.plain.color.set(theme.plain);
-    materials.linesPlain.color.set(theme.plain);
-    materials.edges.color.set(theme.edges);
-    materials.edges.opacity = theme.edgeOpacity;
-    materials.undeformed.color.set(theme.plain);
-    plain.set(theme.plain);
-    apply();
-    dirty = true;
-  }
-
-  select.addEventListener("change", () => {
-    choice = select.value;
-    store.set("quantity", choice);
-    apply();
-  });
-
-  function useColormap(name) {
-    cmap = colormap(name);
-    cmapSelect.value = cmap.name;
-    colorbar.style.background = cmap.gradient;
-  }
-  useColormap(cmap.name);
-  cmapSelect.addEventListener("change", () => {
-    store.set("cmap", cmapSelect.value === DEFAULT_COLORMAP ? null : cmapSelect.value);
-    useColormap(cmapSelect.value);
-    apply();
-  });
-  canvas.addEventListener("dblclick", reset);
-
-  const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
-  const inverse = new THREE.Quaternion();
-  function drawTriad() {
-    triad.style.visibility = model ? "visible" : "hidden";
-    inverse.copy(camera.quaternion).invert();
-    triad.innerHTML = axes
-      .map((axis, k) => ({ v: axis.clone().applyQuaternion(inverse), k }))
-      .sort((a, b) => a.v.z - b.v.z)
-      .filter(({ v }) => Math.hypot(v.x, v.y) > 0.2)
-      .map(({ v, k }) => {
-        const c = theme.axes[k];
-        const x = 32 + v.x * 18;
-        const y = 32 - v.y * 18;
-        return `<line x1="32" y1="32" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${c}" stroke-width="2" stroke-linecap="round"/>` +
-          `<text x="${(32 + v.x * 26).toFixed(1)}" y="${(32 - v.y * 26).toFixed(1)}" fill="${c}" text-anchor="middle" dominant-baseline="central">${"XYZ"[k]}</text>`;
-      })
-      .join("");
-  }
-
-  new ResizeObserver(() => {
-    const w = host.clientWidth;
-    const h = host.clientHeight;
-    if (!w || !h) return;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    if (autoFit) fit(false);
-    dirty = true;
-  }).observe(host);
-
-  (function loop() {
-    requestAnimationFrame(loop);
-    if (controls.update()) dirty = true;
-    if (!dirty) return;
-    dirty = false;
-    renderer.render(scene, camera);
-    drawTriad();
-  })();
-
-  return { setTopo, setFrame, clear, reset, setEdges, setTheme, get edges() { return showEdges; } };
-}
-
 // App
 
 const output = createOutput($("#out-body"));
@@ -2562,35 +1387,68 @@ async function codeFromHash() {
   }
 }
 
-/* viewer: created asynchronously, messages are buffered until it is ready */
+/* viewer: the WebGL viewer of the installed FElupe (viewer.js), which is created when
+   Python is ready (a scene is kept until then) */
 let viewer = null;
-const early = { topo: null, frame: null, clear: null };
-function toViewer(kind, meta, arrays) {
-  if (!viewer) {
-    if (kind === "topo") Object.assign(early, { topo: [meta, arrays], frame: null, clear: null });
-    else if (kind === "frame") early.frame = [meta, arrays];
-    else Object.assign(early, { topo: null, frame: null, clear: [meta && meta.message] });
-    return;
-  }
-  if (kind === "topo") viewer.setTopo(meta, arrays);
-  else if (kind === "frame") viewer.setFrame(meta, arrays);
-  else viewer.clear(meta && meta.message);
+let viewerStart = null;
+let viewerError = ""; // the reason why there is no 3D view
+let scene = null; // the shown scene
+const hint = $("#hint");
+const fitButton = $("#fit");
+const NO_PLOT = 'The script did not show a plot. Show a plot by plot().show(), e.g. solid.plot("Displacement").show().';
+
+function setHint(text) {
+  hint.textContent = text;
+  hint.hidden = !text;
 }
-createViewer($("#view"))
-  .then((v) => {
-    viewer = v;
-    viewer.setTheme(root.dataset.theme);
-    $("#edges").setAttribute("aria-pressed", String(viewer.edges));
-    if (early.topo) viewer.setTopo(...early.topo);
-    if (early.frame) viewer.setFrame(...early.frame);
-    if (early.clear) viewer.clear(...early.clear);
-  })
-  .catch((error) => {
-    const hint = $("#hint");
-    hint.textContent = "The 3D view could not be started. WebGL or the three.js download is unavailable.";
-    hint.hidden = false;
-    console.error(error);
-  });
+
+// the module is imported from a blob: URL (in the page, also for local files)
+function startViewer(source, version) {
+  if (viewerStart) return viewerStart;
+  if (!source) {
+    viewerError = `The 3D view requires FElupe 12 or newer (installed: FElupe ${version}). The scripts are run anyway.`;
+    setHint(viewerError);
+    return null;
+  }
+  const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+  viewerStart = import(url)
+    .then((module) => {
+      viewer = module.createViewer($("#model"), { objects: [] });
+      if (scene) showScene(scene);
+    })
+    .catch((error) => {
+      viewerError = "The 3D view could not be started. WebGL2 is unavailable.";
+      setHint(viewerError);
+      console.error(error);
+    })
+    .finally(() => URL.revokeObjectURL(url));
+  return viewerStart;
+}
+
+// the arrays of a scene are sent as binary data, the scene holds their index
+function unpackScene(value, arrays) {
+  if (Array.isArray(value)) return value.map((item) => unpackScene(item, arrays));
+  if (value && typeof value === "object") {
+    if ("array" in value && "dtype" in value) return { dtype: value.dtype, size: value.size, data: arrays[value.array] };
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, unpackScene(item, arrays)]));
+  }
+  return value;
+}
+
+function showScene(next) {
+  scene = next;
+  if (viewerError) return;
+  setHint("");
+  fitButton.hidden = false;
+  if (viewer) viewer.update(scene);
+}
+
+function clearScene() {
+  scene = null;
+  fitButton.hidden = true;
+  if (viewer) viewer.update({ objects: [] });
+  setHint(viewerError || NO_PLOT);
+}
 
 /* worker */
 // a data: URL works for pages on a server and for local files (file://), where Chrome
@@ -2698,6 +1556,7 @@ function onMessage({ data }) {
       phase = "ready";
       const { info } = data;
       $("#version").textContent = info.felupe;
+      startViewer(data.viewer, info.felupe);
       $("#version").title = `FElupe ${info.felupe}, Python ${info.python}, NumPy ${info.numpy}, SciPy ${info.scipy}, Pyodide ${PYODIDE}`;
       if (info.hello && info.hello !== defaultCode) {
         if (editor.value === defaultCode) editor.value = info.hello;
@@ -2719,12 +1578,11 @@ function onMessage({ data }) {
     case "figure":
       output.figure(data.arrays[0]);
       break;
-    case "topo":
-    case "frame":
-      toViewer(data.type, data.meta, data.arrays);
+    case "scene":
+      showScene(unpackScene(data.meta, data.arrays));
       break;
     case "clear":
-      toViewer("clear", { message: "No mesh or field to show" });
+      clearScene();
       break;
     case "files":
       receiveFiles(data.files, data.removed);
@@ -3019,7 +1877,6 @@ function applyTheme(name) {
   themeButton.title = dark ? "Light theme" : "Dark theme";
   themeButton.setAttribute("aria-label", themeButton.title);
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(root).getPropertyValue("--panel").trim();
-  if (viewer) viewer.setTheme(name);
 }
 themeButton.addEventListener("click", () => {
   const name = root.dataset.theme === "dark" ? "light" : "dark";
@@ -3031,13 +1888,8 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) =>
 });
 applyTheme(root.dataset.theme);
 
-/* viewer buttons */
-$("#edges").addEventListener("click", (event) => {
-  if (!viewer) return;
-  viewer.setEdges(!viewer.edges);
-  event.currentTarget.setAttribute("aria-pressed", String(viewer.edges));
-});
-$("#fit").addEventListener("click", () => viewer && viewer.reset());
+/* viewer buttons: the view of the scene (like a double-click) */
+fitButton.addEventListener("click", () => viewer && scene && viewer.update(scene));
 
 /* splitters (wide screens): script | model and script / output */
 const app = $("#app");
