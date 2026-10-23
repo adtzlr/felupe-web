@@ -960,11 +960,16 @@ const store = {
   },
 };
 
-// felupe=<version> pins a release, felupe=<url to .whl> installs a wheel
+// felupe=<version> pins a release, felupe=<url or path of a .whl> installs a wheel. A
+// path is relative to the page (e.g. a wheel next to index.html), i.e. the wheel has the
+// origin of the page and the server needs no CORS headers.
 function felupeRequirement() {
   const value = (params.get("felupe") || "").trim();
   if (/^\d[\w.+!-]*$/.test(value)) return `felupe==${value}`;
-  if (/^https?:\/\/\S+\.whl$/.test(value)) return value;
+  if (/^\S+\.whl$/.test(value)) {
+    const url = new URL(value, location.href);
+    if (url.protocol === "http:" || url.protocol === "https:") return url.href;
+  }
   return "felupe";
 }
 
