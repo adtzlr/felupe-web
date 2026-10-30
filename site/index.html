@@ -842,7 +842,7 @@ function syncBack(before) {
   post({ type: "files", files, removed }, files.map((f) => f.data.buffer));
 }
 
-async function boot({ base, felupe, bridge, files }) {
+async function boot({ base, felupe, wheel, bridge, files }) {
   status("Loading Python");
   const { loadPyodide } = await import(base + "pyodide.mjs");
   py = await loadPyodide({ indexURL: base });
@@ -860,6 +860,13 @@ async function boot({ base, felupe, bridge, files }) {
   if (errors.length) throw new Error(errors.join("\n"));
   await py.loadPackage("tqdm", quiet).catch(() => {}); // progress bars of FElupe, optional
   status("Installing FElupe");
+  if (wheel) {
+    // a wheel downloaded by the page (with the origin of the page), installed from the
+    // file system of Pyodide
+    py.FS.mkdirTree("/tmp/wheels");
+    py.FS.writeFile(`/tmp/wheels/${wheel.name}`, wheel.data);
+    felupe = `emfs:/tmp/wheels/${wheel.name}`;
+  }
   await py.runPythonAsync(
     `import micropip\nawait micropip.install(${JSON.stringify([felupe, "tensortrax"])})`
   );
@@ -961,8 +968,7 @@ const store = {
 };
 
 // felupe=<version> pins a release, felupe=<url or path of a .whl> installs a wheel. A
-// path is relative to the page (e.g. a wheel next to index.html), i.e. the wheel has the
-// origin of the page and the server needs no CORS headers.
+// path is relative to the page (e.g. a wheel next to index.html).
 function felupeRequirement() {
   const value = (params.get("felupe") || "").trim();
   if (/^\d[\w.+!-]*$/.test(value)) return `felupe==${value}`;
@@ -971,6 +977,28 @@ function felupeRequirement() {
     if (url.protocol === "http:" || url.protocol === "https:") return url.href;
   }
   return "felupe";
+}
+
+// A wheel is downloaded by the page and handed to the worker. The worker (from a data:
+// URL) has an opaque origin, i.e. its requests to the server of the page would require
+// CORS headers. The requests of the page to its own origin don't, e.g. for a wheel next
+// to index.html of `python -m http.server`. Returns null for a release from PyPI.
+async function felupeWheel(requirement) {
+  if (!/^https?:/.test(requirement)) return null;
+  let response;
+  try {
+    response = await fetch(requirement);
+  } catch (error) {
+    throw new Error(
+      `The wheel ${requirement} could not be downloaded (${error.message}). A wheel of ` +
+        "another origin requires a server which sends the CORS header Access-Control-Allow-Origin."
+    );
+  }
+  if (!response.ok) {
+    throw new Error(`The wheel ${requirement} could not be downloaded (HTTP ${response.status}).`);
+  }
+  const name = decodeURIComponent(new URL(requirement).pathname.split("/").pop());
+  return { name, data: new Uint8Array(await response.arrayBuffer()) };
 }
 
 // Status
@@ -1470,10 +1498,23 @@ function setRunButton(running) {
   runButton.title = running ? "Stop" : "Run (Ctrl+Enter)";
 }
 
-function boot() {
+let boots = 0; // a boot which is superseded while a wheel is downloaded is dropped
+
+async function boot() {
   if (worker) worker.terminate();
+  worker = null; // uploaded files are kept in `files` until the worker is created
+  const count = ++boots;
   phase = "booting";
   setStatus("Loading Python", "busy");
+  const felupe = felupeRequirement();
+  let wheel = null;
+  try {
+    wheel = await felupeWheel(felupe);
+  } catch (error) {
+    if (count === boots) failed(error.message);
+    return;
+  }
+  if (count !== boots) return;
   worker = new Worker(workerUrl, { type: "module" });
   worker.onmessage = onMessage;
   worker.onerror = (event) => {
@@ -1481,7 +1522,7 @@ function boot() {
     failed(event.message || "The Python worker stopped.");
   };
   const list = [...files].map(([name, file]) => ({ name, data: file.data }));
-  worker.postMessage({ type: "boot", base: PYODIDE_URL, felupe: felupeRequirement(), bridge, files: list });
+  worker.postMessage({ type: "boot", base: PYODIDE_URL, felupe, wheel, bridge, files: list });
 }
 
 function failed(message) {
